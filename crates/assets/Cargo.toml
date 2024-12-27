@@ -1,0 +1,9 @@
+[package]
+name = "assets"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rust-embed.workspace = true
+anyhow.workspace = true
+gpui.workspace = true

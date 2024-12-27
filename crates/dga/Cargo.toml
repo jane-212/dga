@@ -1,0 +1,11 @@
+[package]
+name = "dga"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+icons.workspace = true
+assets.workspace = true
+
+ui.workspace = true
+gpui.workspace = true

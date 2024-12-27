@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = [ "crates/assets","crates/dga", "crates/icons"]
+
+[workspace.dependencies]
+assets = { path = "crates/assets" }
+icons = { path = "crates/icons" }
+
+ui = { git = "https://github.com/longbridge/gpui-component" }
+gpui = { git = "https://github.com/huacnlee/zed.git", branch = "export-platform-window" }
+rust-embed = "8.5.0"
+anyhow = "1.0.95"
+# reqwest = { version = "0.12.10", features = ["brotli", "cookies", "deflate", "gzip"] }
+# thiserror = "2.0.9"
