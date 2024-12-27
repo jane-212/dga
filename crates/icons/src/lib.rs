@@ -6,6 +6,8 @@ pub enum IconName {
     Moon,
     Github,
     CopyRight,
+    Search,
+    CircleX,
 }
 
 impl IconNamed for IconName {
@@ -15,6 +17,8 @@ impl IconNamed for IconName {
             IconName::Moon => "icons/moon.svg",
             IconName::Github => "icons/github.svg",
             IconName::CopyRight => "icons/copyright.svg",
+            IconName::Search => "icons/search.svg",
+            IconName::CircleX => "icons/circle-x.svg",
         }
         .into()
     }

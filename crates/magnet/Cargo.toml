@@ -1,0 +1,13 @@
+[package]
+name = "magnet"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+reqwest.workspace = true
+thiserror.workspace = true
+async-trait.workspace = true
+dyn-clone.workspace = true
+gpui.workspace = true
+scraper.workspace = true
+tokio.workspace = true

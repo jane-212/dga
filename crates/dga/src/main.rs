@@ -8,17 +8,14 @@ fn main() {
         ui::init(cx);
 
         let window_options = window_options(cx);
-        if let Err(e) = cx.open_window(window_options, dga::App::new) {
+        if let Err(e) = cx.open_window(window_options, dga::App::root) {
             eprintln!("{:?}", e);
         }
     });
 }
 
 fn window_options(cx: &mut AppContext) -> WindowOptions {
-    let window_bounds = cx
-        .primary_display()
-        .map(|display| display.bounds())
-        .unwrap_or(Bounds::centered(None, size(px(800.0), px(600.0)), cx));
+    let window_bounds = Bounds::centered(None, size(px(800.0), px(600.0)), cx);
 
     WindowOptions {
         window_bounds: Some(WindowBounds::Windowed(window_bounds)),

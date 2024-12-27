@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 icons.workspace = true
 assets.workspace = true
+magnet.workspace = true
 
 ui.workspace = true
 gpui.workspace = true

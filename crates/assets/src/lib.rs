@@ -1,5 +1,4 @@
 use anyhow::anyhow;
-
 use gpui::{AppContext, AssetSource, Result, SharedString};
 use rust_embed::RustEmbed;
 

@@ -1,6 +1,6 @@
 use gpui::{
-    div, px, ClickEvent, Div, EventEmitter, IntoElement, ParentElement, Render, Styled, View,
-    ViewContext, VisualContext, WindowContext,
+    div, px, ClickEvent, EventEmitter, FocusHandle, InteractiveElement, IntoElement, ParentElement,
+    Render, Styled, View, ViewContext, VisualContext, WindowContext,
 };
 use icons::IconName;
 use ui::button::{Button, ButtonVariants};
@@ -10,10 +10,14 @@ use ui::{
     theme::{Theme, ThemeMode},
     TitleBar,
 };
-use ui::{Selectable, Sizable};
+use ui::{Root, Selectable, Sizable};
+
+use super::home::Home;
 
 pub struct App {
+    focus_handle: FocusHandle,
     state: AppState,
+    home: View<Home>,
 }
 
 #[derive(Clone, PartialEq)]
@@ -29,7 +33,7 @@ pub enum AppEvent {
 impl EventEmitter<AppEvent> for App {}
 
 impl App {
-    pub fn new(cx: &mut WindowContext) -> View<Self> {
+    pub fn root(cx: &mut WindowContext) -> View<Root> {
         let app = cx.new_view(|cx| {
             #[cfg(not(target_os = "linux"))]
             cx.observe_window_appearance(|_, cx| {
@@ -40,9 +44,14 @@ impl App {
                 cx.quit();
             })
             .detach();
+            let home = Home::new(cx);
+            let focus_handle = cx.focus_handle();
+            cx.focus(&focus_handle);
 
             Self {
+                focus_handle,
                 state: AppState::Home,
+                home,
             }
         });
         cx.subscribe(&app, |app, event, cx| {
@@ -56,7 +65,7 @@ impl App {
 
         cx.activate(true);
 
-        app
+        cx.new_view(|cx| Root::new(app.into(), cx))
     }
 
     #[inline]
@@ -86,7 +95,7 @@ impl App {
     }
 
     #[inline]
-    fn render_license(&mut self, cx: &mut ViewContext<Self>) -> Div {
+    fn render_license(&mut self, cx: &mut ViewContext<Self>) -> impl IntoElement {
         let theme = cx.theme();
 
         div().size_full().flex().justify_center().child(
@@ -124,20 +133,10 @@ impl App {
     }
 
     #[inline]
-    fn render_home(&mut self, _cx: &mut ViewContext<Self>) -> Div {
-        div()
-            .size_full()
-            .flex()
-            .justify_center()
-            .items_center()
-            .child("Home")
-    }
-
-    #[inline]
-    fn render_main(&mut self, cx: &mut ViewContext<Self>) -> Div {
+    fn render_main(&mut self, cx: &mut ViewContext<Self>) -> impl IntoElement {
         match self.state {
-            AppState::Home => self.render_home(cx),
-            AppState::License => self.render_license(cx),
+            AppState::Home => self.home.clone().into_any_element(),
+            AppState::License => self.render_license(cx).into_any_element(),
         }
     }
 
@@ -184,15 +183,19 @@ impl App {
 
 impl Render for App {
     fn render(&mut self, cx: &mut ViewContext<Self>) -> impl IntoElement {
+        let notification_layer = Root::render_notification_layer(cx);
         let title_bar = self.render_title_bar(cx);
         let main = self.render_main(cx);
         let theme = cx.theme();
 
         div()
             .size_full()
+            .font_family(".SystemUIFont")
+            .track_focus(&self.focus_handle)
             .text_color(theme.foreground)
             .bg(theme.background)
             .child(title_bar)
             .child(main)
+            .child(div().absolute().top_8().children(notification_layer))
     }
 }
