@@ -1,9 +1,13 @@
 <div align="center">
-    <img src="icon/icon.png" width="240" height="240">
+    <a href="https://github.com/jane-212/dga">
+       <img src="icon/icon.png" width="240" height="240" />
+     </a>
 
     <h3 align="center">Dga</h3>
 
+    <p align="center">
     磁力搜索工具
+    </p>
 
 </div>
 
