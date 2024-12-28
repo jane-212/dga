@@ -11,13 +11,15 @@ alias rr := release
 # run project in release mode
 release:
     cargo run --release
-    
-# build project in release mode for windows
-build-windows TARGET:
+
+# install cargo-bundle
+install-bundle:
     cargo install cargo-bundle
+
+# build project in release mode for windows
+build-windows TARGET: install-bundle
     cargo bundle --release --target {{TARGET}} --format msi
 
 # build project in release mode
-build TARGET:
-    cargo install cargo-bundle
+build TARGET: install-bundle
     cargo bundle --release --target {{TARGET}}
