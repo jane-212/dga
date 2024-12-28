@@ -1,10 +1,11 @@
-<p align="center">
-  <img src="/icon/icon.png" />
-</p>
+<div align="center">
+    <img src="icon/icon.png" width="240" height="240">
 
-## dga
+    <h3 align="center">Dga</h3>
 
-磁力搜索工具
+    磁力搜索工具
+
+</div>
 
 ### 截图
 
