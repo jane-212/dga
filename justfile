@@ -11,12 +11,11 @@ alias rr := release
 # run project in release mode
 release:
     cargo run --release
-
+    
 # build project in release mode for windows
-build-windows:
-    cargo install cargo-wix
-    cargo wix init
-    cargo wix
+build-windows TARGET:
+    cargo install cargo-bundle
+    cargo bundle --release --target {{TARGET}} --format msi
 
 # build project in release mode
 build TARGET:
