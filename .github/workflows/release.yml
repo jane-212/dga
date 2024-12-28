@@ -97,7 +97,6 @@ jobs:
             bin="target/${{ matrix.target }}/release/bundle/osx/Dga.app"
             name="macos"
           else
-            export PKG_CONFIG_PATH=/usr/lib/pkgconfig/
             just build ${{ env.TARGET_FLAGS }}
             bin="target/${{ matrix.target }}/release/bundle/linux/Dga"
             name="linux"
