@@ -102,7 +102,6 @@ jobs:
             bin="target/${{ matrix.target }}/release/bundle/linux/Dga"
             name="linux"
           fi
-          ls target/${{ matrix.target }}/release/bundle
           echo "BIN=$bin" >> $GITHUB_ENV
           echo "ARCHIVE=$name" >> $GITHUB_ENV
         env:
