@@ -13,6 +13,6 @@ release:
     cargo run --release
 
 # build project in release mode
-build:
+build TARGET:
     cargo install cargo-bundle
-    cargo bundle --release
+    cargo bundle --release --target {{TARGET}}
