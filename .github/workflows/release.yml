@@ -89,15 +89,15 @@ jobs:
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
             just build-windows ${{ env.TARGET_FLAGS }}
             bin="target/${{ matrix.target }}/release/bundle/windows/Dga.exe"
-            name="Dga.exe"
+            name="windows"
           elif [ "${{ matrix.os }}" = "macos-latest" ]; then
             just build ${{ env.TARGET_FLAGS }}
             bin="target/${{ matrix.target }}/release/bundle/osx/Dga.app"
-            name="Dga.app"
+            name="macos"
           else
             just build ${{ env.TARGET_FLAGS }}
             bin="target/${{ matrix.target }}/release/bundle/linux/Dga"
-            name="Dga"
+            name="linux"
           fi
           ls target/${{ matrix.target }}/release/bundle
           echo "BIN=$bin" >> $GITHUB_ENV
@@ -105,11 +105,26 @@ jobs:
         env:
           VERSION: ${{ needs.create-release.outputs.version }}
 
-      - name: Rename for archive
+      - name: Creating directory for archive
         shell: bash
         run: |
-          mv "$BIN" "$ARCHIVE"
-          echo "ASSET=$ARCHIVE" >> $GITHUB_ENV
+          mkdir -p "$ARCHIVE"
+          cp "$BIN" "$ARCHIVE"/
+          cp LICENSE "$ARCHIVE"/
+
+      - name: Build archive (Windows)
+        shell: bash
+        if: matrix.os == 'windows-latest'
+        run: |
+          7z a "$ARCHIVE.zip" "$ARCHIVE"
+          echo "ASSET=$ARCHIVE.zip" >> $GITHUB_ENV
+
+      - name: Build archive (Unix)
+        shell: bash
+        if: matrix.os != 'windows-latest'
+        run: |
+          tar czf "$ARCHIVE.tar.gz" "$ARCHIVE"
+          echo "ASSET=$ARCHIVE.tar.gz" >> $GITHUB_ENV
 
       - name: Upload release archive
         env:
