@@ -90,7 +90,7 @@ jobs:
         run: |
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
             just build-windows ${{ env.TARGET_FLAGS }}
-            bin="target/${{ matrix.target }}/release/bundle/windows/Dga.exe"
+            bin="target/${{ matrix.target }}/release/bundle/msi/Dga.msi"
             name="windows"
           elif [ "${{ matrix.os }}" = "macos-latest" ]; then
             just build ${{ env.TARGET_FLAGS }}
