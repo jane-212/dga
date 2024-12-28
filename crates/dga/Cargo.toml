@@ -11,3 +11,14 @@ magnet.workspace = true
 ui.workspace = true
 gpui.workspace = true
 reqwest_client.workspace = true
+
+[package.metadata.bundle]
+name = "Dga"
+version = "0.1.0"
+identifier = "github.jane-212.dga"
+icon = ["icon/icon.png"]
+copyright = "Copyright (c) jane 2024. All rights reserved."
+short_description = "一个用来查找磁力的软件"
+long_description = """
+集合多个站点的磁力搜索
+"""
