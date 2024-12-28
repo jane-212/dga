@@ -92,8 +92,8 @@ jobs:
             bin="target/${{ matrix.target }}/release/bundle/windows/dga.exe"
             name="dga.exe"
           elif [ "${{ matrix.os }}" = "macos-latest" ]; then
-            bin="target/${{ matrix.target }}/release/bundle/osx/dga"
-            name="dga"
+            bin="target/${{ matrix.target }}/release/bundle/osx/Dga.app"
+            name="Dga.app"
           else
             bin="target/${{ matrix.target }}/release/bundle/linux/dga"
             name="dga"
