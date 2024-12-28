@@ -22,7 +22,7 @@
 
 ## 下载
 
-[点击下载](https://github.com/jane-212/dga/releases)对应平台的文件
-
 > [!WARNING]
 > 软件未对`Windows`和`Linux`进行测试
+
+[点击](https://github.com/jane-212/dga/releases)下载对应平台的文件
