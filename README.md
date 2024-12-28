@@ -1,6 +1,6 @@
 <div align="center">
   <a href="https://github.com/jane-212/dga">
-    <img src="icon/icon.png" width="200" height="200">
+    <img src="icon/icon.png" width="150" height="150">
   </a>
 
   <h3 align="center">Dga</h3>
@@ -16,8 +16,13 @@
   <a href="https://github.com/jane-212/dga/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/jane-212/dga?style=for-the-badge&logo=GitHub&color=a6da95"></a>
 </div>
 
----
-
-### 截图
+## 截图
 
 ![](/images/example.png)
+
+## 下载
+
+[点击下载](https://github.com/jane-212/dga/releases)对应平台的文件
+
+> [!WARNING]
+> 软件未对`Windows`和`Linux`进行测试
