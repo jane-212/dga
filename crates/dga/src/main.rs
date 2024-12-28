@@ -1,17 +1,23 @@
+use std::sync::Arc;
+
 use assets::Assets;
 use gpui::{
     point, px, size, App, AppContext, Bounds, TitlebarOptions, WindowBounds, WindowOptions,
 };
+use reqwest_client::ReqwestClient;
 
 fn main() {
-    App::new().with_assets(Assets).run(|cx: &mut AppContext| {
-        ui::init(cx);
+    App::new()
+        .with_assets(Assets)
+        .with_http_client(Arc::new(ReqwestClient::new()))
+        .run(|cx: &mut AppContext| {
+            ui::init(cx);
 
-        let window_options = window_options(cx);
-        if let Err(e) = cx.open_window(window_options, dga::App::root) {
-            eprintln!("{:?}", e);
-        }
-    });
+            let window_options = window_options(cx);
+            if let Err(e) = cx.open_window(window_options, dga::App::root) {
+                eprintln!("{:?}", e);
+            }
+        });
 }
 
 fn window_options(cx: &mut AppContext) -> WindowOptions {

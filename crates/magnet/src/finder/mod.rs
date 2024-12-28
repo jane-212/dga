@@ -1,25 +1,37 @@
 mod u3c3;
 
+use std::{any::TypeId, collections::HashMap, sync::Arc};
+
 use async_trait::async_trait;
-use dyn_clone::{clone_trait_object, DynClone};
 use gpui::SharedString;
 use reqwest::Client;
-use std::sync::Arc;
 use u3c3::U3C3;
 
 use super::{Item, Result};
+use crate::{Preview, PreviewUrl};
 
 #[async_trait]
-pub trait Finder: DynClone + Send + Sync {
+pub trait Finder: Send + Sync {
     async fn find(&self, key: SharedString) -> Result<Vec<Item>>;
+    async fn load_preview(&self, url: SharedString) -> Result<Preview>;
 }
 
-clone_trait_object!(Finder);
+fn cast(u3c3: U3C3) -> Arc<dyn Finder> {
+    Arc::new(u3c3)
+}
 
-pub fn all_finders(client: Arc<Client>) -> Result<Vec<Box<dyn Finder>>> {
+pub fn all_finders(client: Client) -> Result<HashMap<TypeId, Arc<dyn Finder>>> {
+    let mut finders = HashMap::new();
     let u3c3 = U3C3::new(client.clone())?;
+    finders.insert(TypeId::of::<U3C3>(), cast(u3c3));
 
-    Ok(vec![Box::new(u3c3)])
+    Ok(finders)
+}
+
+pub fn finder_id(preview: &PreviewUrl) -> TypeId {
+    match preview {
+        PreviewUrl::U3C3(_) => TypeId::of::<U3C3>(),
+    }
 }
 
 #[macro_export]

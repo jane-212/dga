@@ -9,11 +9,11 @@ magnet = { path = "crates/magnet" }
 
 ui = { git = "https://github.com/longbridge/gpui-component" }
 gpui = { git = "https://github.com/huacnlee/zed.git", branch = "export-platform-window" }
+reqwest_client = { git = "https://github.com/huacnlee/zed.git", branch = "export-platform-window" }
 rust-embed = "8.5.0"
 anyhow = "1.0.95"
 reqwest = { version = "0.12.10", features = ["brotli", "deflate", "gzip"] }
 thiserror = "2.0.9"
 async-trait = "0.1.83"
-dyn-clone = "1.0.17"
 scraper = "0.22.0"
 tokio = { version = "1.42.0", features = ["rt-multi-thread"] }

@@ -10,3 +10,4 @@ magnet.workspace = true
 
 ui.workspace = true
 gpui.workspace = true
+reqwest_client.workspace = true

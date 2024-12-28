@@ -7,7 +7,6 @@ edition = "2021"
 reqwest.workspace = true
 thiserror.workspace = true
 async-trait.workspace = true
-dyn-clone.workspace = true
 gpui.workspace = true
 scraper.workspace = true
 tokio.workspace = true

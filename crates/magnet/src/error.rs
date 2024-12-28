@@ -2,14 +2,16 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("failed to build client")]
+    #[error("初始化客户端失败")]
     BuildClient,
-    #[error("network error")]
+    #[error("网络错误")]
     Network(#[from] reqwest::Error),
-    #[error("failed to parse selector: {}", _0)]
+    #[error("CSS选择器初始化错误: {}", _0)]
     Parse(&'static str),
-    #[error("join error")]
+    #[error("运行时初始化错误")]
     Tokio(#[from] tokio::task::JoinError),
+    #[error("类型初始化错误")]
+    TypeNotFound,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
