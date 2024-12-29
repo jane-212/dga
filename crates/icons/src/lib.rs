@@ -8,13 +8,10 @@ pub enum IconName {
     CopyRight,
     Search,
     CircleX,
-    Weight,
-    Calendar,
     Info,
     Loader,
     Copy,
     Check,
-    Candy,
 }
 
 impl IconNamed for IconName {
@@ -26,13 +23,10 @@ impl IconNamed for IconName {
             IconName::CopyRight => "icons/copyright.svg",
             IconName::Search => "icons/search.svg",
             IconName::CircleX => "icons/circle-x.svg",
-            IconName::Weight => "icons/weight.svg",
-            IconName::Calendar => "icons/calendar.svg",
             IconName::Info => "icons/info.svg",
             IconName::Loader => "icons/loader.svg",
             IconName::Copy => "icons/copy.svg",
             IconName::Check => "icons/check.svg",
-            IconName::Candy => "icons/candy.svg",
         }
         .into()
     }

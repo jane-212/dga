@@ -7,7 +7,8 @@ use std::collections::HashMap;
 use std::sync::OnceLock;
 use std::{sync::Arc, time::Duration};
 
-use error::{Error, Result};
+use error::Error;
+pub use error::Result;
 use finder::Finder;
 use gpui::SharedString;
 pub use item::{Item, Preview, PreviewUrl};
@@ -27,16 +28,20 @@ fn runtime() -> &'static Runtime {
 
 impl Magnet {
     pub fn new() -> Result<Self> {
-        let client = Client::builder()
+        let client = Self::default_http_client()?;
+        let finders = finder::all_finders(client)?;
+
+        Ok(Self { finders })
+    }
+
+    fn default_http_client() -> Result<Client> {
+        Client::builder()
             .gzip(true)
             .brotli(true)
             .deflate(true)
             .timeout(Duration::from_secs(10))
             .build()
-            .map_err(|_e| Error::BuildClient)?;
-        let finders = finder::all_finders(client)?;
-
-        Ok(Self { finders })
+            .map_err(|_e| Error::BuildClient)
     }
 
     pub async fn find(self, key: SharedString) -> Result<Vec<Item>> {

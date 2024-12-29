@@ -2,23 +2,21 @@ mod preview;
 mod search;
 
 use gpui::{
-    div, IntoElement, ParentElement, Render, SharedString, Styled, View, ViewContext,
+    div, IntoElement, ParentElement, Render, SharedString, Styled, Task, View, ViewContext,
     VisualContext, WeakView, WindowContext,
 };
 use icons::IconName;
-use magnet::Magnet;
+use magnet::{Item, Magnet};
 use preview::Preview;
 use search::Search;
 use ui::{notification::Notification, ContextModal};
 
-use crate::{app::AppEvent, App};
+use crate::{app::AppEvent, App, LogErr};
 
 pub struct Home {
     magnet: Magnet,
     search: View<Search>,
-    search_loading: bool,
     preview: View<Preview>,
-    preview_loading: bool,
 }
 
 impl Home {
@@ -45,30 +43,48 @@ impl Home {
             Self {
                 magnet,
                 search,
-                search_loading: false,
                 preview,
-                preview_loading: false,
             }
         })
     }
 
+    fn check_and_set_preview_to_loading(&self, cx: &mut ViewContext<Self>) -> bool {
+        let is_loading = self.preview.read(cx).is_loading();
+        match is_loading {
+            true => {
+                Self::notify_too_quick(cx);
+            }
+            false => {
+                self.preview.update(cx, |this, cx| {
+                    this.load();
+                    cx.notify();
+                });
+            }
+        }
+
+        is_loading
+    }
+
+    #[inline]
+    fn preview_task(
+        &self,
+        preview: magnet::PreviewUrl,
+        cx: &mut ViewContext<Self>,
+    ) -> Task<magnet::Result<magnet::Preview>> {
+        let magnet = self.magnet.clone();
+        cx.background_executor()
+            .spawn(async move { magnet.preview(preview).await })
+    }
+
     fn preview(&mut self, preview: magnet::PreviewUrl, cx: &mut ViewContext<Self>) {
-        if self.preview_loading {
-            Self::notify_too_quick(cx);
+        if self.check_and_set_preview_to_loading(cx) {
             return;
         }
-        self.preview_loading = true;
+
+        let task = self.preview_task(preview, cx);
         let preview_view = self.preview.clone();
-        preview_view.update(cx, |this, cx| {
-            this.load();
-            cx.notify();
-        });
-        let magnet = self.magnet.clone();
-        let task = cx
-            .background_executor()
-            .spawn(async move { magnet.preview(preview).await });
-        cx.spawn(|this, mut cx| async move {
-            let result = match task.await {
+        cx.spawn(|_this, mut cx| async move {
+            match task.await {
                 Ok(new_view) => preview_view.update(&mut cx, |this, cx| {
                     this.loaded(new_view);
                     cx.notify();
@@ -78,16 +94,8 @@ impl Home {
                     cx.notify();
                     Self::notify_error(e.to_string(), cx);
                 }),
-            };
-            if let Err(e) = result {
-                eprintln!("{e:?}");
             }
-            let result = this.update(&mut cx, |this, _cx| {
-                this.preview_loading = false;
-            });
-            if let Err(e) = result {
-                eprintln!("{e:?}");
-            }
+            .log_err();
         })
         .detach();
     }
@@ -102,22 +110,42 @@ impl Home {
         cx.push_notification(Notification::new(error).icon(IconName::CircleX));
     }
 
+    fn check_and_set_search_to_loading(&self, cx: &mut ViewContext<Self>) -> bool {
+        let is_loading = self.search.read(cx).is_loading();
+        match is_loading {
+            true => {
+                Self::notify_too_quick(cx);
+            }
+            false => {
+                self.search.update(cx, |this, cx| {
+                    this.load();
+                    cx.notify();
+                });
+            }
+        }
+
+        is_loading
+    }
+
+    #[inline]
+    fn search_task(
+        &self,
+        key: SharedString,
+        cx: &mut ViewContext<Self>,
+    ) -> Task<magnet::Result<Vec<Item>>> {
+        let magnet = self.magnet.clone();
+        cx.background_executor()
+            .spawn(async move { magnet.find(key).await })
+    }
+
     fn search(&mut self, key: SharedString, search: View<Search>, cx: &mut ViewContext<Self>) {
-        if self.search_loading {
-            Self::notify_too_quick(cx);
+        if self.check_and_set_search_to_loading(cx) {
             return;
         }
-        self.search_loading = true;
-        search.update(cx, |search, cx| {
-            search.load();
-            cx.notify();
-        });
-        let magnet = self.magnet.clone();
-        let task = cx
-            .background_executor()
-            .spawn(async move { magnet.find(key).await });
-        cx.spawn(|this, mut cx| async move {
-            let result = match task.await {
+
+        let task = self.search_task(key, cx);
+        cx.spawn(|_this, mut cx| async move {
+            match task.await {
                 Ok(new_items) => search.update(&mut cx, |search, cx| {
                     search.loaded(new_items);
                     cx.notify();
@@ -127,16 +155,8 @@ impl Home {
                     cx.notify();
                     Self::notify_error(e.to_string(), cx);
                 }),
-            };
-            if let Err(e) = result {
-                eprintln!("{e:?}");
             }
-            let result = this.update(&mut cx, |this, _cx| {
-                this.search_loading = false;
-            });
-            if let Err(e) = result {
-                eprintln!("{e:?}");
-            }
+            .log_err();
         })
         .detach();
     }

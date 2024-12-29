@@ -7,8 +7,10 @@ use gpui::{
 use icons::IconName;
 use ui::{
     button::Button, indicator::Indicator, label::Label, prelude::FluentBuilder,
-    scroll::ScrollbarAxis, theme::ActiveTheme, Icon, Sizable, StyledExt,
+    scroll::ScrollbarAxis, theme::ActiveTheme, Sizable, StyledExt,
 };
+
+use crate::LogErr;
 
 pub struct Preview {
     is_loading: bool,
@@ -26,6 +28,11 @@ impl Preview {
     }
 
     #[inline]
+    pub fn is_loading(&self) -> bool {
+        self.is_loading
+    }
+
+    #[inline]
     pub fn load(&mut self) {
         self.is_loading = true;
     }
@@ -33,6 +40,7 @@ impl Preview {
     #[inline]
     pub fn loaded(&mut self, preview: magnet::Preview) {
         self.is_loading = false;
+        self.copied = false;
         self.view = Some(preview);
     }
 
@@ -42,31 +50,22 @@ impl Preview {
     }
 
     #[inline]
-    fn render_label(label: Label, icon: IconName) -> impl IntoElement {
-        div()
-            .flex()
-            .items_center()
-            .gap_1()
-            .text_sm()
-            .font_light()
-            .child(Icon::new(icon))
-            .child(label)
-    }
-
-    #[inline]
     fn copy(&mut self, magnet: String, cx: &mut ViewContext<Self>) {
         cx.write_to_clipboard(ClipboardItem::new_string(magnet));
         self.copied = true;
         cx.notify();
+        Self::delay_remove_copy_check(cx);
+    }
+
+    #[inline]
+    fn delay_remove_copy_check(cx: &mut ViewContext<Self>) {
         cx.spawn(|this, mut cx| async move {
-            cx.background_executor().timer(Duration::from_secs(3)).await;
-            let result = this.update(&mut cx, |this, cx| {
+            cx.background_executor().timer(Duration::from_secs(1)).await;
+            this.update(&mut cx, |this, cx| {
                 this.copied = false;
                 cx.notify();
-            });
-            if let Err(e) = result {
-                eprintln!("{e:?}");
-            }
+            })
+            .log_err();
         })
         .detach();
     }
@@ -95,14 +94,8 @@ impl Preview {
                                 .justify_between()
                                 .mt_2()
                                 .text_color(theme.secondary_foreground)
-                                .child(Self::render_label(
-                                    Label::new(preview.size),
-                                    IconName::Weight,
-                                ))
-                                .child(Self::render_label(
-                                    Label::new(preview.date),
-                                    IconName::Calendar,
-                                )),
+                                .child(Label::new(preview.size))
+                                .child(Label::new(preview.date)),
                         )
                         .child(
                             div()
@@ -163,10 +156,7 @@ impl Render for Preview {
                 this.child(Indicator::new().icon(IconName::Loader).large())
             })
             .when(!self.is_loading, |this| {
-                this.when(self.view.is_none(), |this| {
-                    this.child(Icon::new(IconName::Candy).large())
-                })
-                .when_some(self.view.clone(), |this, view| {
+                this.when_some(self.view.clone(), |this, view| {
                     this.child(self.render_content(view, cx))
                 })
             })

@@ -6,7 +6,7 @@ use icons::IconName;
 use magnet::{Item, PreviewUrl};
 use ui::{
     indicator::Indicator, label::Label, prelude::FluentBuilder, scroll::ScrollbarAxis,
-    theme::ActiveTheme, Icon, Sizable, StyledExt,
+    theme::ActiveTheme, Sizable, StyledExt,
 };
 
 pub struct Search {
@@ -25,6 +25,11 @@ impl Search {
     }
 
     #[inline]
+    pub fn is_loading(&self) -> bool {
+        self.is_loading
+    }
+
+    #[inline]
     pub fn load(&mut self) {
         self.is_loading = true;
     }
@@ -39,18 +44,6 @@ impl Search {
     #[inline]
     pub fn load_error(&mut self) {
         self.is_loading = false;
-    }
-
-    #[inline]
-    fn render_label(label: Label, icon: IconName) -> impl IntoElement {
-        div()
-            .flex()
-            .items_center()
-            .gap_1()
-            .text_sm()
-            .font_light()
-            .child(Icon::new(icon))
-            .child(label)
     }
 
     #[inline]
@@ -92,14 +85,8 @@ impl Search {
                                             .flex()
                                             .justify_between()
                                             .pt_2()
-                                            .child(Self::render_label(
-                                                Label::new(item.size),
-                                                IconName::Weight,
-                                            ))
-                                            .child(Self::render_label(
-                                                Label::new(item.date),
-                                                IconName::Calendar,
-                                            )),
+                                            .child(Label::new(item.size))
+                                            .child(Label::new(item.date)),
                                     )
                                     .when_some(selected_item, |this, selected| {
                                         if selected == idx {
@@ -143,18 +130,7 @@ impl Search {
     fn render_content(&self, cx: &mut ViewContext<Self>) -> impl IntoElement {
         match self.is_loading {
             true => Self::render_loading(),
-            false => {
-                if self.items.is_empty() {
-                    div()
-                        .size_full()
-                        .flex()
-                        .justify_center()
-                        .items_center()
-                        .child(Icon::new(IconName::Candy).large())
-                } else {
-                    self.render_items(cx)
-                }
-            }
+            false => self.render_items(cx),
         }
     }
 }

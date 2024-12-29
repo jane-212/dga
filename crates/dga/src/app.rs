@@ -5,7 +5,6 @@ use gpui::{
 use icons::IconName;
 use ui::button::{Button, ButtonVariants};
 use ui::input::{InputEvent, TextInput};
-use ui::prelude::FluentBuilder;
 use ui::theme::ActiveTheme;
 use ui::{
     theme::{Theme, ThemeMode},
@@ -164,55 +163,75 @@ impl App {
     }
 
     #[inline]
-    fn render_title_bar(&mut self, cx: &mut ViewContext<Self>) -> TitleBar {
+    fn render_title_start(&self, _cx: &mut ViewContext<Self>) -> impl IntoElement {
+        div()
+    }
+
+    #[inline]
+    fn render_title_middle(&self, cx: &mut ViewContext<Self>) -> impl IntoElement {
         let theme = cx.theme();
 
+        match self.state {
+            AppState::Home => div()
+                .w(px(200.0))
+                .border_1()
+                .border_color(theme.border)
+                .rounded_lg()
+                .child(self.search_input.clone()),
+            AppState::License => div(),
+        }
+    }
+
+    #[inline]
+    fn theme_icon(cx: &mut ViewContext<Self>) -> IconName {
+        match cx.theme().mode {
+            ThemeMode::Light => IconName::Sun,
+            ThemeMode::Dark => IconName::Moon,
+        }
+    }
+
+    #[inline]
+    fn render_title_end(&self, cx: &mut ViewContext<Self>) -> impl IntoElement {
+        div()
+            .flex()
+            .justify_end()
+            .items_center()
+            .px_2()
+            .gap_1()
+            .child(
+                Button::new("theme-mode")
+                    .icon(Self::theme_icon(cx))
+                    .ghost()
+                    .small()
+                    .on_click(Self::change_color_mode),
+            )
+            .child(
+                Button::new("license")
+                    .icon(IconName::CopyRight)
+                    .ghost()
+                    .small()
+                    .selected(self.state == AppState::License)
+                    .on_click(cx.listener(Self::switch_license)),
+            )
+            .child(
+                Button::new("github")
+                    .icon(IconName::Github)
+                    .ghost()
+                    .small()
+                    .on_click(Self::open_home_page),
+            )
+    }
+
+    #[inline]
+    fn render_title_bar(&mut self, cx: &mut ViewContext<Self>) -> TitleBar {
+        let title_start = self.render_title_start(cx);
+        let title_middle = self.render_title_middle(cx);
+        let title_end = self.render_title_end(cx);
+
         TitleBar::new()
-            .child(div())
-            .child(
-                div()
-                    .w(px(200.0))
-                    .border_1()
-                    .border_color(theme.border)
-                    .rounded_lg()
-                    .child(self.search_input.clone()),
-            )
-            .child(
-                div()
-                    .flex()
-                    .justify_end()
-                    .items_center()
-                    .px_2()
-                    .gap_1()
-                    .child(
-                        Button::new("theme-mode")
-                            .map(|this| {
-                                if cx.theme().mode.is_dark() {
-                                    this.icon(IconName::Moon)
-                                } else {
-                                    this.icon(IconName::Sun)
-                                }
-                            })
-                            .ghost()
-                            .small()
-                            .on_click(Self::change_color_mode),
-                    )
-                    .child(
-                        Button::new("license")
-                            .icon(IconName::CopyRight)
-                            .ghost()
-                            .small()
-                            .selected(self.state == AppState::License)
-                            .on_click(cx.listener(Self::switch_license)),
-                    )
-                    .child(
-                        Button::new("github")
-                            .icon(IconName::Github)
-                            .ghost()
-                            .small()
-                            .on_click(Self::open_home_page),
-                    ),
-            )
+            .child(title_start)
+            .child(title_middle)
+            .child(title_end)
     }
 }
 
