@@ -101,7 +101,7 @@ jobs:
             name="macos"
           else
             just build ${{ env.TARGET_FLAGS }}
-            bin="target/${{ matrix.target }}/release/bundle/linux/Dga"
+            bin="target/${{ matrix.target }}/release/bundle/deb/dga_0.1.0_amd64.deb"
             name="linux"
           fi
           echo "BIN=$bin" >> $GITHUB_ENV
