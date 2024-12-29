@@ -101,13 +101,12 @@ jobs:
             name="macos"
           else
             just build ${{ env.TARGET_FLAGS }}
-            bin="target/${{ matrix.target }}/release/bundle/deb/dga_0.1.0_amd64.deb"
+            version="${{ needs.create-release.outputs.version }}"
+            bin="target/${{ matrix.target }}/release/bundle/deb/dga_${version}_amd64.deb"
             name="linux"
           fi
           echo "BIN=$bin" >> $GITHUB_ENV
           echo "ARCHIVE=$name" >> $GITHUB_ENV
-        env:
-          VERSION: ${{ needs.create-release.outputs.version }}
 
       - name: Creating directory for archive
         shell: bash
