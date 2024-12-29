@@ -1,6 +1,6 @@
 use gpui::{
     div, px, ClickEvent, EventEmitter, FocusHandle, InteractiveElement, IntoElement, ParentElement,
-    Render, SharedString, Styled, View, ViewContext, VisualContext, WindowContext,
+    Render, RenderOnce, SharedString, Styled, View, ViewContext, VisualContext, WindowContext,
 };
 use icons::IconName;
 use ui::button::{Button, ButtonVariants};
@@ -37,7 +37,54 @@ impl EventEmitter<AppEvent> for App {}
 
 impl App {
     pub fn root(cx: &mut WindowContext) -> View<Root> {
-        let app = cx.new_view(|cx| {
+        let app = Self::new(cx);
+        cx.subscribe(&app, Self::handle_app_event).detach();
+        cx.activate(true);
+
+        cx.new_view(|cx| Root::new(app.into(), cx))
+    }
+
+    fn handle_app_event(this: View<Self>, event: &AppEvent, cx: &mut WindowContext) {
+        if let AppEvent::ChangeTo(state) = event {
+            this.update(cx, |app, cx| {
+                app.state = state.clone();
+                cx.notify();
+            });
+        }
+    }
+
+    fn new_search_input(cx: &mut ViewContext<Self>) -> View<TextInput> {
+        let input = cx.new_view(|cx| {
+            TextInput::new(cx)
+                .placeholder("搜索")
+                .appearance(false)
+                .xsmall()
+                .prefix(|_cx| div().pl_2().child(Icon::new(IconName::Search).small()))
+        });
+        cx.subscribe(&input, |this: &mut Self, input, event, cx| {
+            if let InputEvent::PressEnter = event {
+                this.search(input, cx);
+            }
+        })
+        .detach();
+
+        input
+    }
+
+    fn new_home(cx: &mut ViewContext<Self>) -> View<Home> {
+        let app = cx.view().downgrade();
+        Home::new(app, cx)
+    }
+
+    fn new_focus_handle(cx: &mut ViewContext<Self>) -> FocusHandle {
+        let handle = cx.focus_handle();
+        cx.focus(&handle);
+
+        handle
+    }
+
+    fn new(cx: &mut WindowContext) -> View<Self> {
+        cx.new_view(|cx| {
             #[cfg(not(target_os = "linux"))]
             cx.observe_window_appearance(|_, cx| {
                 Theme::sync_system_appearance(cx);
@@ -48,33 +95,9 @@ impl App {
             })
             .detach();
 
-            let search_input = {
-                let input = cx.new_view(|cx| {
-                    TextInput::new(cx)
-                        .placeholder("搜索")
-                        .appearance(false)
-                        .xsmall()
-                        .prefix(|_cx| div().pl_2().child(Icon::new(IconName::Search).small()))
-                });
-                cx.subscribe(&input, |this: &mut Self, input, event, cx| {
-                    if let InputEvent::PressEnter = event {
-                        this.search(cx, input);
-                    }
-                })
-                .detach();
-
-                input
-            };
-            let home = {
-                let app = cx.view().downgrade();
-                Home::new(app, cx)
-            };
-            let focus_handle = {
-                let handle = cx.focus_handle();
-                cx.focus(&handle);
-
-                handle
-            };
+            let search_input = Self::new_search_input(cx);
+            let home = Self::new_home(cx);
+            let focus_handle = Self::new_focus_handle(cx);
 
             Self {
                 search_input,
@@ -82,42 +105,34 @@ impl App {
                 state: AppState::Home,
                 home,
             }
-        });
-        cx.subscribe(&app, |app, event, cx| {
-            if let AppEvent::ChangeTo(state) = event {
-                app.update(cx, |app, cx| {
-                    app.state = state.clone();
-                    cx.notify();
-                });
-            }
         })
-        .detach();
-
-        cx.activate(true);
-
-        cx.new_view(|cx| Root::new(app.into(), cx))
     }
 
     #[inline]
-    fn search(&mut self, cx: &mut ViewContext<Self>, input: View<TextInput>) {
-        let search_text = input.read(cx).text();
-        if search_text.is_empty() {
+    fn search(&mut self, input: View<TextInput>, cx: &mut ViewContext<Self>) {
+        let text = input.read(cx).text();
+        if text.is_empty() {
             return;
         }
+        Self::clear_input(input, cx);
+        cx.emit(AppEvent::Search(text));
+    }
+
+    #[inline]
+    fn clear_input(input: View<TextInput>, cx: &mut ViewContext<Self>) {
         input.update(cx, |input, cx| {
             input.set_text("", cx);
         });
-        cx.emit(AppEvent::Search(search_text));
     }
 
     #[inline]
     fn change_color_mode(_event: &ClickEvent, cx: &mut WindowContext) {
         cx.stop_propagation();
+
         let mode = match cx.theme().mode.is_dark() {
             true => ThemeMode::Light,
             false => ThemeMode::Dark,
         };
-
         Theme::change(mode, cx);
     }
 
@@ -137,49 +152,6 @@ impl App {
     }
 
     #[inline]
-    fn render_license(&mut self, cx: &mut ViewContext<Self>) -> impl IntoElement {
-        let theme = cx.theme();
-
-        div()
-            .size_full()
-            .flex()
-            .justify_center()
-            .items_center()
-            .child(
-                div()
-                    .w(px(700.0))
-                    .child(
-                        div()
-                            .flex()
-                            .justify_center()
-                            .items_center()
-                            .rounded_lg()
-                            .shadow_sm()
-                            .p_2()
-                            .bg(theme.secondary)
-                            .text_sm()
-                            .font_bold()
-                            .text_color(theme.primary)
-                            .child("软件开源协议")
-                            .border_1()
-                            .border_color(theme.border),
-                    )
-                    .child(
-                        div()
-                            .rounded_lg()
-                            .shadow_sm()
-                            .p_2()
-                            .mt_2()
-                            .bg(theme.secondary)
-                            .text_sm()
-                            .child(include_str!("../../../LICENSE"))
-                            .border_1()
-                            .border_color(theme.border),
-                    ),
-            )
-    }
-
-    #[inline]
     fn render_main(&mut self, cx: &mut ViewContext<Self>) -> impl IntoElement {
         let total_height = cx.viewport_size().height;
         let height = total_height - TITLE_BAR_HEIGHT;
@@ -187,7 +159,7 @@ impl App {
 
         match self.state {
             AppState::Home => base.child(self.home.clone()),
-            AppState::License => base.child(self.render_license(cx)),
+            AppState::License => base.child(License),
         }
     }
 
@@ -260,5 +232,52 @@ impl Render for App {
             .child(title_bar)
             .child(main)
             .child(div().absolute().top_8().children(notification_layer))
+    }
+}
+
+#[derive(IntoElement)]
+struct License;
+
+impl RenderOnce for License {
+    fn render(self, cx: &mut WindowContext) -> impl IntoElement {
+        let theme = cx.theme();
+
+        div()
+            .size_full()
+            .flex()
+            .justify_center()
+            .items_center()
+            .child(
+                div()
+                    .w(px(700.0))
+                    .child(
+                        div()
+                            .flex()
+                            .justify_center()
+                            .items_center()
+                            .rounded_lg()
+                            .shadow_sm()
+                            .p_2()
+                            .bg(theme.secondary)
+                            .text_sm()
+                            .font_bold()
+                            .text_color(theme.primary)
+                            .child("软件开源协议")
+                            .border_1()
+                            .border_color(theme.border),
+                    )
+                    .child(
+                        div()
+                            .rounded_lg()
+                            .shadow_sm()
+                            .p_2()
+                            .mt_2()
+                            .bg(theme.secondary)
+                            .text_sm()
+                            .child(include_str!("../../../LICENSE"))
+                            .border_1()
+                            .border_color(theme.border),
+                    ),
+            )
     }
 }
