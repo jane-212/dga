@@ -1,17 +1,16 @@
 mod error;
 mod finder;
-mod item;
 
 use std::any::TypeId;
 use std::collections::HashMap;
-use std::sync::OnceLock;
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
+use std::time::Duration;
 
 use error::Error;
 pub use error::Result;
 use finder::Finder;
 use gpui::SharedString;
-pub use item::{Item, Preview, PreviewUrl};
+use lazy_static::lazy_static;
 use reqwest::Client;
 use tokio::runtime::Runtime;
 
@@ -20,10 +19,8 @@ pub struct Magnet {
     finders: HashMap<TypeId, Arc<dyn Finder>>,
 }
 
-static RUNTIME: OnceLock<Runtime> = OnceLock::new();
-
-fn runtime() -> &'static Runtime {
-    RUNTIME.get_or_init(|| Runtime::new().unwrap())
+lazy_static! {
+    static ref RUNTIME: Runtime = Runtime::new().unwrap();
 }
 
 impl Magnet {
@@ -44,39 +41,57 @@ impl Magnet {
             .map_err(|_e| Error::BuildClient)
     }
 
-    pub async fn find(self, key: SharedString) -> Result<Vec<Item>> {
-        let runtime = runtime();
-        let handle = runtime.spawn(async move {
-            let mut tasks = Vec::new();
-            for finder in self.finders.values() {
-                let key = key.clone();
-                let task = async move { finder.find(key).await };
-                tasks.push(task);
-            }
+    pub async fn find(&self, key: SharedString) -> Result<Vec<Arc<dyn FoundItem>>> {
+        let finders = self.finders.values().cloned().collect::<Vec<_>>();
+        RUNTIME
+            .spawn(async move {
+                let mut tasks = Vec::new();
+                for finder in finders {
+                    let key = key.clone();
+                    let task = async move { finder.find(key).await };
+                    tasks.push(task);
+                }
 
-            let mut items = Vec::new();
-            for task in tasks {
-                let new_items = task.await?;
-                items.extend(new_items);
-            }
+                let mut items = Vec::new();
+                for task in tasks {
+                    let new_items = task.await?;
+                    items.extend(new_items);
+                }
 
-            Ok(items)
-        });
-
-        handle.await?
+                Ok(items)
+            })
+            .await?
     }
 
-    pub async fn preview(self, preview: PreviewUrl) -> Result<Preview> {
-        let runtime = runtime();
-        let handle = runtime.spawn(async move {
-            let id = finder::finder_id(&preview);
-            let url = preview.url();
-            match self.finders.get(&id) {
-                Some(finder) => finder.load_preview(url).await,
-                None => Err(Error::TypeNotFound),
+    pub async fn preview(&self, url: Arc<dyn Previewable>) -> Result<Arc<dyn FoundPreview>> {
+        let (id, url) = url.preview_url();
+        match self.finders.get(&id) {
+            Some(finder) => {
+                let finder = finder.clone();
+                RUNTIME
+                    .spawn(async move { finder.load_preview(url).await })
+                    .await?
             }
-        });
-
-        handle.await?
+            None => Err(Error::TypeNotFound),
+        }
     }
+}
+
+pub trait FoundItem: Send + Sync {
+    fn title(&self) -> SharedString;
+    fn size(&self) -> SharedString;
+    fn date(&self) -> SharedString;
+    fn url(&self) -> Arc<dyn Previewable>;
+}
+
+pub trait Previewable: Send + Sync + 'static {
+    fn preview_url(&self) -> (TypeId, SharedString);
+}
+
+pub trait FoundPreview: Send + Sync {
+    fn title(&self) -> SharedString;
+    fn size(&self) -> SharedString;
+    fn date(&self) -> SharedString;
+    fn magnet(&self) -> SharedString;
+    fn images(&self) -> Vec<SharedString>;
 }

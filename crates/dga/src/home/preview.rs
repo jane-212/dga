@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::time::Duration;
 
 use gpui::{
@@ -5,6 +6,7 @@ use gpui::{
     ViewContext, VisualContext, WindowContext,
 };
 use icons::IconName;
+use magnet::FoundPreview;
 use ui::{
     button::Button, indicator::Indicator, label::Label, prelude::FluentBuilder,
     scroll::ScrollbarAxis, theme::ActiveTheme, Sizable, StyledExt,
@@ -15,7 +17,7 @@ use crate::LogErr;
 pub struct Preview {
     is_loading: bool,
     copied: bool,
-    view: Option<magnet::Preview>,
+    view: Option<Arc<dyn FoundPreview>>,
 }
 
 impl Preview {
@@ -38,7 +40,7 @@ impl Preview {
     }
 
     #[inline]
-    pub fn loaded(&mut self, preview: magnet::Preview) {
+    pub fn loaded(&mut self, preview: Arc<dyn FoundPreview>) {
         self.is_loading = false;
         self.copied = false;
         self.view = Some(preview);
@@ -71,7 +73,7 @@ impl Preview {
     }
 
     #[inline]
-    fn render_content(&self, preview: magnet::Preview, cx: &mut ViewContext<Self>) -> Div {
+    fn render_content(&self, preview: Arc<dyn FoundPreview>, cx: &mut ViewContext<Self>) -> Div {
         let theme = cx.theme();
 
         div().size_full().child(
@@ -86,7 +88,7 @@ impl Preview {
                                 .text_color(theme.primary)
                                 .text_xl()
                                 .font_bold()
-                                .child(preview.title),
+                                .child(preview.title()),
                         )
                         .child(
                             div()
@@ -94,8 +96,8 @@ impl Preview {
                                 .justify_between()
                                 .mt_2()
                                 .text_color(theme.secondary_foreground)
-                                .child(Label::new(preview.size))
-                                .child(Label::new(preview.date)),
+                                .child(Label::new(preview.size()))
+                                .child(Label::new(preview.date())),
                         )
                         .child(
                             div()
@@ -113,7 +115,7 @@ impl Preview {
                                     div()
                                         .text_ellipsis()
                                         .overflow_hidden()
-                                        .child(preview.magnet.clone()),
+                                        .child(preview.magnet()),
                                 )
                                 .child(
                                     Button::new("copy")
@@ -125,17 +127,22 @@ impl Preview {
                                         .small()
                                         .on_click(cx.listener({
                                             let copied = self.copied;
+                                            let magnet = preview.magnet();
                                             move |this, _event, cx| {
                                                 if !copied {
-                                                    this.copy(preview.magnet.to_string(), cx);
+                                                    this.copy(magnet.to_string(), cx);
                                                 }
                                             }
                                         })),
                                 ),
                         )
-                        .child(div().mt_2().children(preview.images.into_iter().map(|url| {
-                            img(url).border_1().border_color(theme.border).rounded_md()
-                        }))),
+                        .child(
+                            div()
+                                .mt_2()
+                                .children(preview.images().into_iter().map(|url| {
+                                    img(url).border_1().border_color(theme.border).rounded_md()
+                                })),
+                        ),
                 ),
         )
     }

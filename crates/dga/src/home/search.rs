@@ -1,16 +1,18 @@
+use std::sync::Arc;
+
 use gpui::{
     div, px, Div, Entity, EventEmitter, InteractiveElement, IntoElement, MouseButton,
     ParentElement, Render, Styled, View, ViewContext, VisualContext, WindowContext,
 };
 use icons::IconName;
-use magnet::{Item, PreviewUrl};
+use magnet::{FoundItem, Previewable};
 use ui::{
     indicator::Indicator, label::Label, prelude::FluentBuilder, scroll::ScrollbarAxis,
     theme::ActiveTheme, Sizable, StyledExt,
 };
 
 pub struct Search {
-    items: Vec<Item>,
+    items: Vec<Arc<dyn FoundItem>>,
     selected_item: Option<usize>,
     is_loading: bool,
 }
@@ -35,7 +37,7 @@ impl Search {
     }
 
     #[inline]
-    pub fn loaded(&mut self, new_items: Vec<Item>) {
+    pub fn loaded(&mut self, new_items: Vec<Arc<dyn FoundItem>>) {
         self.is_loading = false;
         self.items = new_items;
         self.selected_item = None;
@@ -44,6 +46,26 @@ impl Search {
     #[inline]
     pub fn load_error(&mut self) {
         self.is_loading = false;
+    }
+
+    #[inline]
+    fn load_preview(
+        &mut self,
+        selected_item: Option<usize>,
+        idx: usize,
+        url: Arc<dyn Previewable>,
+        cx: &mut ViewContext<Self>,
+    ) {
+        if selected_item
+            .map(|selected| selected == idx)
+            .unwrap_or(false)
+        {
+            return;
+        }
+
+        self.selected_item = Some(idx);
+        cx.emit(SearchEvent::Preview(url));
+        cx.notify();
     }
 
     #[inline]
@@ -57,8 +79,6 @@ impl Search {
                 div()
                     .scrollable(cx.view().entity_id(), ScrollbarAxis::Vertical)
                     .children(self.items.iter().enumerate().map(|(idx, item)| {
-                        let item = item.clone();
-
                         div()
                             .when(idx != 0 && idx != len, |this| this.pt_1().pb_1())
                             .when(idx == 0, |this| this.pt_2().pb_1())
@@ -77,7 +97,7 @@ impl Search {
                                             .font_bold()
                                             .text_lg()
                                             .text_color(theme.primary)
-                                            .child(item.title),
+                                            .child(item.title()),
                                     )
                                     .child(
                                         div()
@@ -85,8 +105,8 @@ impl Search {
                                             .flex()
                                             .justify_between()
                                             .pt_2()
-                                            .child(Label::new(item.size))
-                                            .child(Label::new(item.date)),
+                                            .child(Label::new(item.size()))
+                                            .child(Label::new(item.date())),
                                     )
                                     .when_some(selected_item, |this, selected| {
                                         if selected == idx {
@@ -97,17 +117,16 @@ impl Search {
                                     })
                                     .on_mouse_down(
                                         MouseButton::Left,
-                                        cx.listener(move |this, _event, cx| {
-                                            if selected_item
-                                                .map(|selected| selected == idx)
-                                                .unwrap_or(false)
-                                            {
-                                                return;
+                                        cx.listener({
+                                            let url = item.url();
+                                            move |this, _event, cx| {
+                                                this.load_preview(
+                                                    selected_item,
+                                                    idx,
+                                                    url.clone(),
+                                                    cx,
+                                                );
                                             }
-
-                                            this.selected_item = Some(idx);
-                                            cx.emit(SearchEvent::Preview(item.preview.clone()));
-                                            cx.notify();
                                         }),
                                     ),
                             )
@@ -151,7 +170,7 @@ impl Render for Search {
 }
 
 pub enum SearchEvent {
-    Preview(PreviewUrl),
+    Preview(Arc<dyn Previewable>),
 }
 
 impl EventEmitter<SearchEvent> for Search {}

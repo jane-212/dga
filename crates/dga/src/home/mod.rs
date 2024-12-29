@@ -1,12 +1,14 @@
 mod preview;
 mod search;
 
+use std::sync::Arc;
+
 use gpui::{
     div, IntoElement, ParentElement, Render, SharedString, Styled, Task, View, ViewContext,
     VisualContext, WeakView, WindowContext,
 };
 use icons::IconName;
-use magnet::{Item, Magnet};
+use magnet::{FoundItem, FoundPreview, Magnet, Previewable};
 use preview::Preview;
 use search::Search;
 use ui::{notification::Notification, ContextModal};
@@ -68,20 +70,20 @@ impl Home {
     #[inline]
     fn preview_task(
         &self,
-        preview: magnet::PreviewUrl,
+        url: Arc<dyn Previewable>,
         cx: &mut ViewContext<Self>,
-    ) -> Task<magnet::Result<magnet::Preview>> {
+    ) -> Task<magnet::Result<Arc<dyn FoundPreview>>> {
         let magnet = self.magnet.clone();
         cx.background_executor()
-            .spawn(async move { magnet.preview(preview).await })
+            .spawn(async move { magnet.preview(url).await })
     }
 
-    fn preview(&mut self, preview: magnet::PreviewUrl, cx: &mut ViewContext<Self>) {
+    fn preview(&mut self, url: Arc<dyn Previewable>, cx: &mut ViewContext<Self>) {
         if self.check_and_set_preview_to_loading(cx) {
             return;
         }
 
-        let task = self.preview_task(preview, cx);
+        let task = self.preview_task(url, cx);
         let preview_view = self.preview.clone();
         cx.spawn(|_this, mut cx| async move {
             match task.await {
@@ -132,7 +134,7 @@ impl Home {
         &self,
         key: SharedString,
         cx: &mut ViewContext<Self>,
-    ) -> Task<magnet::Result<Vec<Item>>> {
+    ) -> Task<magnet::Result<Vec<Arc<dyn FoundItem>>>> {
         let magnet = self.magnet.clone();
         cx.background_executor()
             .spawn(async move { magnet.find(key).await })

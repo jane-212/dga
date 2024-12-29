@@ -7,13 +7,13 @@ use gpui::SharedString;
 use reqwest::Client;
 use u3c3::U3C3;
 
-use super::{Item, Result};
-use crate::{Preview, PreviewUrl};
+use super::Result;
+use crate::{FoundItem, FoundPreview};
 
 #[async_trait]
 pub trait Finder: Send + Sync {
-    async fn find(&self, key: SharedString) -> Result<Vec<Item>>;
-    async fn load_preview(&self, url: SharedString) -> Result<Preview>;
+    async fn find(&self, key: SharedString) -> Result<Vec<Arc<dyn FoundItem>>>;
+    async fn load_preview(&self, url: SharedString) -> Result<Arc<dyn FoundPreview>>;
 }
 
 fn cast(u3c3: U3C3) -> Arc<dyn Finder> {
@@ -26,12 +26,6 @@ pub fn all_finders(client: Client) -> Result<HashMap<TypeId, Arc<dyn Finder>>> {
     finders.insert(TypeId::of::<U3C3>(), cast(u3c3));
 
     Ok(finders)
-}
-
-pub fn finder_id(preview: &PreviewUrl) -> TypeId {
-    match preview {
-        PreviewUrl::U3C3(_) => TypeId::of::<U3C3>(),
-    }
 }
 
 #[macro_export]
