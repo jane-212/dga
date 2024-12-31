@@ -16,7 +16,7 @@ use ui::{notification::Notification, ContextModal};
 use crate::{app::AppEvent, App, LogErr};
 
 pub struct Home {
-    magnet: Magnet,
+    magnet: Arc<Magnet>,
     search: View<Search>,
     preview: View<Preview>,
 }
@@ -43,7 +43,7 @@ impl Home {
             }
 
             Self {
-                magnet,
+                magnet: Arc::new(magnet),
                 search,
                 preview,
             }
@@ -134,7 +134,7 @@ impl Home {
         &self,
         key: SharedString,
         cx: &mut ViewContext<Self>,
-    ) -> Task<magnet::Result<Vec<Arc<dyn FoundItem>>>> {
+    ) -> Task<magnet::Result<Vec<Box<dyn FoundItem>>>> {
         let magnet = self.magnet.clone();
         cx.background_executor()
             .spawn(async move { magnet.find(key).await })

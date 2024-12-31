@@ -33,7 +33,7 @@ impl U3C3 {
 
 #[async_trait]
 impl Finder for U3C3 {
-    async fn find(&self, key: SharedString) -> Result<Vec<Arc<dyn FoundItem>>> {
+    async fn find(&self, key: SharedString) -> Result<Vec<Box<dyn FoundItem>>> {
         let url = Self::BASE_URL;
         let search2 = "eelja3lfe1a1".into();
         let plain_text = self
@@ -46,7 +46,7 @@ impl Finder for U3C3 {
             .await?;
         let html = Html::parse_document(&plain_text);
 
-        let mut items: Vec<Arc<dyn FoundItem>> = Vec::new();
+        let mut items: Vec<Box<dyn FoundItem>> = Vec::new();
         for item in html.select(&self.home_selectors.item).skip(2) {
             let title = item
                 .select(&self.home_selectors.title)
@@ -76,7 +76,7 @@ impl Finder for U3C3 {
                 .map(|date| date.text().collect())
                 .unwrap_or_default();
 
-            items.push(Arc::new(Item::new(title, size, date, preview)));
+            items.push(Box::new(Item::new(title, size, date, preview)));
         }
 
         Ok(items)

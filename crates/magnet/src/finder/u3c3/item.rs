@@ -6,7 +6,6 @@ use gpui::SharedString;
 use super::U3C3;
 use crate::{FoundItem, FoundPreview, Previewable};
 
-#[derive(Clone)]
 pub struct Item {
     pub title: SharedString,
     pub size: SharedString,
@@ -57,7 +56,6 @@ impl Previewable for Url {
     }
 }
 
-#[derive(Clone)]
 pub struct Preview {
     pub title: SharedString,
     pub size: SharedString,

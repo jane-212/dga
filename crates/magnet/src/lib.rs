@@ -14,7 +14,6 @@ use lazy_static::lazy_static;
 use reqwest::Client;
 use tokio::runtime::Runtime;
 
-#[derive(Clone)]
 pub struct Magnet {
     finders: HashMap<TypeId, Arc<dyn Finder>>,
 }
@@ -41,7 +40,7 @@ impl Magnet {
             .map_err(|_e| Error::BuildClient)
     }
 
-    pub async fn find(&self, key: SharedString) -> Result<Vec<Arc<dyn FoundItem>>> {
+    pub async fn find(&self, key: SharedString) -> Result<Vec<Box<dyn FoundItem>>> {
         let finders = self.finders.values().cloned().collect::<Vec<_>>();
         RUNTIME
             .spawn(async move {

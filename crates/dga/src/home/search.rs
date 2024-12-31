@@ -12,7 +12,7 @@ use ui::{
 };
 
 pub struct Search {
-    items: Vec<Arc<dyn FoundItem>>,
+    items: Vec<Box<dyn FoundItem>>,
     selected_item: Option<usize>,
     is_loading: bool,
 }
@@ -37,7 +37,7 @@ impl Search {
     }
 
     #[inline]
-    pub fn loaded(&mut self, new_items: Vec<Arc<dyn FoundItem>>) {
+    pub fn loaded(&mut self, new_items: Vec<Box<dyn FoundItem>>) {
         self.is_loading = false;
         self.items = new_items;
         self.selected_item = None;
