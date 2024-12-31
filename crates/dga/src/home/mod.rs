@@ -3,6 +3,7 @@ mod search;
 
 use std::sync::Arc;
 
+use error::Result;
 use gpui::{
     div, IntoElement, ParentElement, Render, SharedString, Styled, Task, View, ViewContext,
     VisualContext, WeakView, WindowContext,
@@ -72,7 +73,7 @@ impl Home {
         &self,
         url: Arc<dyn Previewable>,
         cx: &mut ViewContext<Self>,
-    ) -> Task<magnet::Result<Arc<dyn FoundPreview>>> {
+    ) -> Task<Result<Arc<dyn FoundPreview>>> {
         let magnet = self.magnet.clone();
         cx.background_executor()
             .spawn(async move { magnet.preview(url).await })
@@ -134,7 +135,7 @@ impl Home {
         &self,
         key: SharedString,
         cx: &mut ViewContext<Self>,
-    ) -> Task<magnet::Result<Vec<Box<dyn FoundItem>>>> {
+    ) -> Task<Result<Vec<Box<dyn FoundItem>>>> {
         let magnet = self.magnet.clone();
         cx.background_executor()
             .spawn(async move { magnet.find(key).await })

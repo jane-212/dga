@@ -1,4 +1,3 @@
-mod error;
 mod finder;
 
 use std::any::TypeId;
@@ -6,8 +5,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use error::Error;
-pub use error::Result;
+use error::{Result, Error};
 use finder::Finder;
 use gpui::SharedString;
 use lazy_static::lazy_static;

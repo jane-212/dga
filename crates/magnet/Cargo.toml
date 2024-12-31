@@ -4,8 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+error.workspace = true
+
 reqwest.workspace = true
-thiserror.workspace = true
 async-trait.workspace = true
 gpui.workspace = true
 scraper.workspace = true

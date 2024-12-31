@@ -7,6 +7,7 @@ edition = "2021"
 icons.workspace = true
 assets.workspace = true
 magnet.workspace = true
+error.workspace = true
 
 ui.workspace = true
 gpui.workspace = true
