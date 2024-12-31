@@ -4,26 +4,26 @@ use std::sync::Arc;
 use gpui::SharedString;
 
 use super::U3C3;
-use crate::{FoundItem, FoundPreview, Previewable};
+use crate::{Date, FoundItem, FoundPreview, Previewable, Size};
 
 pub struct Item {
     pub title: SharedString,
-    pub size: SharedString,
-    pub date: SharedString,
+    pub size: Size,
+    pub date: Date,
     pub preview: Url,
 }
 
 impl Item {
     pub fn new(
         title: impl Into<SharedString>,
-        size: impl Into<SharedString>,
-        date: impl Into<SharedString>,
+        size: Size,
+        date: Date,
         preview: impl Into<SharedString>,
     ) -> Self {
         Self {
             title: title.into(),
-            size: size.into(),
-            date: date.into(),
+            size,
+            date,
             preview: Url(preview.into()),
         }
     }
@@ -38,12 +38,12 @@ impl FoundItem for Item {
         self.title.clone()
     }
 
-    fn size(&self) -> SharedString {
-        self.size.clone()
+    fn size(&self) -> &Size {
+        &self.size
     }
 
-    fn date(&self) -> SharedString {
-        self.date.clone()
+    fn date(&self) -> &Date {
+        &self.date
     }
 }
 
@@ -58,8 +58,8 @@ impl Previewable for Url {
 
 pub struct Preview {
     pub title: SharedString,
-    pub size: SharedString,
-    pub date: SharedString,
+    pub size: Size,
+    pub date: Date,
     pub magnet: SharedString,
     pub images: Vec<SharedString>,
 }
@@ -67,15 +67,15 @@ pub struct Preview {
 impl Preview {
     pub fn new(
         title: impl Into<SharedString>,
-        size: impl Into<SharedString>,
-        date: impl Into<SharedString>,
+        size: Size,
+        date: Date,
         magnet: impl Into<SharedString>,
         images: Vec<SharedString>,
     ) -> Self {
         Self {
             title: title.into(),
-            size: size.into(),
-            date: date.into(),
+            size,
+            date,
             magnet: magnet.into(),
             images,
         }
@@ -87,12 +87,12 @@ impl FoundPreview for Preview {
         self.title.clone()
     }
 
-    fn size(&self) -> SharedString {
-        self.size.clone()
+    fn size(&self) -> &Size {
+        &self.size
     }
 
-    fn date(&self) -> SharedString {
-        self.date.clone()
+    fn date(&self) -> &Date {
+        &self.date
     }
 
     fn magnet(&self) -> SharedString {

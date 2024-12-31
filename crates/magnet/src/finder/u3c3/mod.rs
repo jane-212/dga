@@ -4,6 +4,7 @@ mod selectors;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use gpui::SharedString;
 use item::{Item, Preview};
 use reqwest::Client;
@@ -11,7 +12,7 @@ use scraper::Html;
 use selectors::{HomeSelectors, PreviewSelectors};
 
 use super::{Finder, Result};
-use crate::{FoundItem, FoundPreview};
+use crate::{Date, FoundItem, FoundPreview, Size};
 
 pub struct U3C3 {
     client: Client,
@@ -28,6 +29,41 @@ impl U3C3 {
             home_selectors: HomeSelectors::new()?,
             preview_selectors: PreviewSelectors::new()?,
         })
+    }
+
+    fn parse_size(size: String) -> Size {
+        let number = size
+            .chars()
+            .take_while(|c| c.is_ascii_digit() || *c == '.')
+            .collect::<String>()
+            .parse::<f64>()
+            .ok();
+        let signal: String = size
+            .chars()
+            .rev()
+            .take_while(|c| !c.is_ascii_digit() && *c != '.')
+            .collect::<String>()
+            .chars()
+            .rev()
+            .collect();
+
+        let size = match signal.to_uppercase().as_str() {
+            "GB" => number.map(|number| (number * 1024.0 * 1024.0) as u32),
+            "MB" => number.map(|number| (number * 1024.0) as u32),
+            _ => None,
+        }
+        .unwrap_or(0);
+
+        Size::new(size)
+    }
+
+    fn parse_date(date: String) -> Date {
+        let date = NaiveDateTime::parse_from_str(date.trim(), "%Y-%m-%d %H:%M:%S")
+            .map(|ndt| DateTime::from_naive_utc_and_offset(ndt, Utc))
+            .ok()
+            .unwrap_or_default();
+
+        Date::new(date)
     }
 }
 
@@ -76,7 +112,12 @@ impl Finder for U3C3 {
                 .map(|date| date.text().collect())
                 .unwrap_or_default();
 
-            items.push(Box::new(Item::new(title, size, date, preview)));
+            items.push(Box::new(Item::new(
+                title,
+                Self::parse_size(size),
+                Self::parse_date(date),
+                preview,
+            )));
         }
 
         Ok(items)
@@ -125,7 +166,13 @@ impl Finder for U3C3 {
             .iter()
             .map(|item| item.into())
             .collect();
-        let preview = Preview::new(title, size, date, magnet, images);
+        let preview = Preview::new(
+            title,
+            Self::parse_size(size),
+            Self::parse_date(date),
+            magnet,
+            images,
+        );
 
         Ok(Arc::new(preview))
     }

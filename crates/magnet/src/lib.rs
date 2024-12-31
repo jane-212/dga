@@ -1,10 +1,11 @@
 mod finder;
 
-use std::any::TypeId;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
+use std::{any::TypeId, cmp::Ordering};
 
+use chrono::{DateTime, Utc};
 use error::{Error, Result};
 use finder::Finder;
 use gpui::SharedString;
@@ -50,6 +51,10 @@ impl Magnet {
                     items.extend(new_items);
                 }
 
+                items.sort_by(|a, b| match b.date().cmp(a.date()) {
+                    Ordering::Equal => b.size().cmp(a.size()),
+                    ori => ori,
+                });
                 Ok(items)
             })
             .await?
@@ -71,8 +76,8 @@ impl Magnet {
 
 pub trait FoundItem: Send + Sync {
     fn title(&self) -> SharedString;
-    fn size(&self) -> SharedString;
-    fn date(&self) -> SharedString;
+    fn size(&self) -> &Size;
+    fn date(&self) -> &Date;
     fn url(&self) -> Arc<dyn Previewable>;
 }
 
@@ -82,8 +87,71 @@ pub trait Previewable: Send + Sync + 'static {
 
 pub trait FoundPreview: Send + Sync {
     fn title(&self) -> SharedString;
-    fn size(&self) -> SharedString;
-    fn date(&self) -> SharedString;
+    fn size(&self) -> &Size;
+    fn date(&self) -> &Date;
     fn magnet(&self) -> SharedString;
     fn images(&self) -> Vec<SharedString>;
+}
+
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+pub struct Size {
+    size: u32,
+    format: SharedString,
+}
+
+impl From<&Size> for SharedString {
+    fn from(value: &Size) -> Self {
+        value.format.clone()
+    }
+}
+
+impl Size {
+    pub fn new(size: u32) -> Self {
+        Self {
+            size,
+            format: Self::to_format(size),
+        }
+    }
+
+    fn to_format(size: u32) -> SharedString {
+        let mut count = 0;
+        let mut size = size as f64;
+        while size > 1024.0 {
+            size /= 1024.0;
+            count += 1;
+        }
+
+        let signal = match count {
+            1 => "MB",
+            2 => "GB",
+            _ => "KB",
+        };
+
+        format!("{:.2}{}", size, signal).into()
+    }
+}
+
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+pub struct Date {
+    date_time: DateTime<Utc>,
+    format: SharedString,
+}
+
+impl From<&Date> for SharedString {
+    fn from(value: &Date) -> Self {
+        value.format.clone()
+    }
+}
+
+impl Date {
+    pub fn new(date_time: DateTime<Utc>) -> Self {
+        Self {
+            date_time,
+            format: Self::to_format(date_time),
+        }
+    }
+
+    fn to_format(date_time: DateTime<Utc>) -> SharedString {
+        date_time.format("%Y-%m-%d %H:%M:%S").to_string().into()
+    }
 }
