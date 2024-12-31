@@ -12,6 +12,8 @@ pub enum IconName {
     Loader,
     Copy,
     Check,
+    House,
+    HardDriveDownload,
 }
 
 impl IconNamed for IconName {
@@ -27,6 +29,8 @@ impl IconNamed for IconName {
             IconName::Loader => "icons/loader.svg",
             IconName::Copy => "icons/copy.svg",
             IconName::Check => "icons/check.svg",
+            IconName::House => "icons/house.svg",
+            IconName::HardDriveDownload => "icons/hard-drive-download.svg",
         }
         .into()
     }

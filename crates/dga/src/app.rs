@@ -12,19 +12,37 @@ use ui::{
 };
 use ui::{Icon, Root, Selectable, Sizable, StyledExt};
 
+use super::download::Download;
 use super::home::Home;
 
 pub struct App {
     focus_handle: FocusHandle,
     state: AppState,
     home: View<Home>,
+    download: View<Download>,
     search_input: View<TextInput>,
 }
 
 #[derive(Clone, PartialEq)]
 pub enum AppState {
     Home,
-    License,
+    Download,
+    License(FromState),
+}
+
+#[derive(Clone, PartialEq)]
+pub enum FromState {
+    Home,
+    Download,
+}
+
+impl From<&FromState> for AppState {
+    fn from(value: &FromState) -> Self {
+        match value {
+            FromState::Home => AppState::Home,
+            FromState::Download => AppState::Download,
+        }
+    }
 }
 
 pub enum AppEvent {
@@ -96,6 +114,7 @@ impl App {
 
             let search_input = Self::new_search_input(cx);
             let home = Self::new_home(cx);
+            let download = Download::new(cx);
             let focus_handle = Self::new_focus_handle(cx);
 
             Self {
@@ -103,6 +122,7 @@ impl App {
                 focus_handle,
                 state: AppState::Home,
                 home,
+                download,
             }
         })
     }
@@ -145,8 +165,11 @@ impl App {
     fn switch_license(&mut self, _event: &ClickEvent, cx: &mut ViewContext<Self>) {
         cx.stop_propagation();
         match self.state {
-            AppState::Home => cx.emit(AppEvent::ChangeTo(AppState::License)),
-            AppState::License => cx.emit(AppEvent::ChangeTo(AppState::Home)),
+            AppState::Home => cx.emit(AppEvent::ChangeTo(AppState::License(FromState::Home))),
+            AppState::Download => {
+                cx.emit(AppEvent::ChangeTo(AppState::License(FromState::Download)))
+            }
+            AppState::License(ref to) => cx.emit(AppEvent::ChangeTo(to.into())),
         }
     }
 
@@ -158,13 +181,47 @@ impl App {
 
         match self.state {
             AppState::Home => base.child(self.home.clone()),
-            AppState::License => base.child(License),
+            AppState::Download => base.child(self.download.clone()),
+            AppState::License(_) => base.child(License),
         }
     }
 
     #[inline]
-    fn render_title_start(&self, _cx: &mut ViewContext<Self>) -> impl IntoElement {
+    fn render_title_start(&self, cx: &mut ViewContext<Self>) -> impl IntoElement {
         div()
+            .flex()
+            .justify_end()
+            .items_center()
+            .px_2()
+            .gap_1()
+            .child(
+                Button::new("home")
+                    .icon(IconName::House)
+                    .ghost()
+                    .small()
+                    .selected(matches!(self.state, AppState::Home))
+                    .on_click(cx.listener(Self::set_to_home)),
+            )
+            .child(
+                Button::new("download")
+                    .icon(IconName::HardDriveDownload)
+                    .ghost()
+                    .small()
+                    .selected(matches!(self.state, AppState::Download))
+                    .on_click(cx.listener(Self::set_to_download)),
+            )
+    }
+
+    #[inline]
+    fn set_to_home(&mut self, _event: &ClickEvent, cx: &mut ViewContext<Self>) {
+        cx.stop_propagation();
+        cx.emit(AppEvent::ChangeTo(AppState::Home));
+    }
+
+    #[inline]
+    fn set_to_download(&mut self, _event: &ClickEvent, cx: &mut ViewContext<Self>) {
+        cx.stop_propagation();
+        cx.emit(AppEvent::ChangeTo(AppState::Download));
     }
 
     #[inline]
@@ -178,7 +235,8 @@ impl App {
                 .border_color(theme.border)
                 .rounded_lg()
                 .child(self.search_input.clone()),
-            AppState::License => div(),
+            AppState::Download => div(),
+            AppState::License(_) => div(),
         }
     }
 
@@ -210,7 +268,7 @@ impl App {
                     .icon(IconName::CopyRight)
                     .ghost()
                     .small()
-                    .selected(self.state == AppState::License)
+                    .selected(matches!(self.state, AppState::License(_)))
                     .on_click(cx.listener(Self::switch_license)),
             )
             .child(
