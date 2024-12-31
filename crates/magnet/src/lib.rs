@@ -5,19 +5,14 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use error::{Result, Error};
+use error::{Error, Result};
 use finder::Finder;
 use gpui::SharedString;
-use lazy_static::lazy_static;
 use reqwest::Client;
-use tokio::runtime::Runtime;
+use runtime::RUNTIME;
 
 pub struct Magnet {
     finders: HashMap<TypeId, Arc<dyn Finder>>,
-}
-
-lazy_static! {
-    static ref RUNTIME: Runtime = Runtime::new().unwrap();
 }
 
 impl Magnet {

@@ -5,10 +5,9 @@ edition = "2021"
 
 [dependencies]
 error.workspace = true
+runtime.workspace = true
 
 reqwest.workspace = true
 async-trait.workspace = true
 gpui.workspace = true
 scraper.workspace = true
-tokio.workspace = true
-lazy_static.workspace = true
