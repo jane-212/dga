@@ -18,7 +18,8 @@
 
 ## 截图
 
-![](/images/example.png)
+![](/images/home.png)
+![](/images/download.png)
 
 ## 下载
 
