@@ -20,7 +20,7 @@ install-dependencies:
         sudo apt-get -y install libsoup-3.0-dev \
         sudo apt-get -y install javascriptcoregtk-4.1-dev \
         sudo apt-get -y install libwebkit2gtk-4.1-dev \
-        sudo apt-get -y install libxkbcommon-x11-dev \
+        sudo apt-get -y install libxkbcommon-x11-dev; \
     fi
 
 # install cargo-bundle
