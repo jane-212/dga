@@ -8,10 +8,14 @@ icons.workspace = true
 assets.workspace = true
 magnet.workspace = true
 error.workspace = true
+runtime.workspace = true
 
 ui.workspace = true
 gpui.workspace = true
 reqwest_client.workspace = true
+qbit-rs.workspace = true
+url.workspace = true
+chrono.workspace = true
 
 [package.metadata.bundle]
 name = "Dga"

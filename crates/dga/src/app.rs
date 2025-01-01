@@ -14,6 +14,8 @@ use ui::{Icon, Root, Selectable, Sizable, StyledExt};
 
 use super::download::Download;
 use super::home::Home;
+use crate::download::DownloadEvent;
+use crate::home::HomeEvent;
 
 pub struct App {
     focus_handle: FocusHandle,
@@ -64,6 +66,21 @@ impl App {
     fn handle_app_event(this: View<Self>, event: &AppEvent, cx: &mut WindowContext) {
         if let AppEvent::ChangeTo(state) = event {
             this.update(cx, |app, cx| {
+                if app.download.read(cx).has_login() {
+                    match state {
+                        AppState::Download => {
+                            app.download.update(cx, |this, cx| {
+                                this.resume(cx);
+                            });
+                        }
+                        _ => {
+                            app.download.update(cx, |this, cx| {
+                                this.pause(cx);
+                            });
+                        }
+                    }
+                }
+
                 app.state = state.clone();
                 cx.notify();
             });
@@ -114,6 +131,10 @@ impl App {
 
             let search_input = Self::new_search_input(cx);
             let home = Self::new_home(cx);
+            cx.subscribe(&home, |this, _home, event, cx| match event {
+                HomeEvent::AddToDownload(new) => this.add_new(new.clone(), cx),
+            })
+            .detach();
             let download = Download::new(cx);
             let focus_handle = Self::new_focus_handle(cx);
 
@@ -199,6 +220,7 @@ impl App {
                     .icon(IconName::House)
                     .ghost()
                     .small()
+                    .tooltip("首页")
                     .selected(matches!(self.state, AppState::Home))
                     .on_click(cx.listener(Self::set_to_home)),
             )
@@ -207,6 +229,7 @@ impl App {
                     .icon(IconName::HardDriveDownload)
                     .ghost()
                     .small()
+                    .tooltip("下载")
                     .selected(matches!(self.state, AppState::Download))
                     .on_click(cx.listener(Self::set_to_download)),
             )
@@ -225,6 +248,41 @@ impl App {
     }
 
     #[inline]
+    fn logout_download(&mut self, _event: &ClickEvent, cx: &mut ViewContext<Self>) {
+        self.download.update(cx, |this, cx| {
+            this.logout(cx);
+        });
+    }
+
+    #[inline]
+    fn pause_all(&mut self, _event: &ClickEvent, cx: &mut ViewContext<Self>) {
+        self.download.update(cx, |_this, cx| {
+            cx.emit(DownloadEvent::PauseAll);
+        })
+    }
+
+    #[inline]
+    fn resume_all(&mut self, _event: &ClickEvent, cx: &mut ViewContext<Self>) {
+        self.download.update(cx, |_this, cx| {
+            cx.emit(DownloadEvent::ResumeAll);
+        })
+    }
+
+    #[inline]
+    fn add_new(&mut self, new: SharedString, cx: &mut ViewContext<Self>) {
+        self.download.update(cx, |_this, cx| {
+            cx.emit(DownloadEvent::AddNew(new));
+        })
+    }
+
+    #[inline]
+    fn add_from_clipboard(&mut self, _event: &ClickEvent, cx: &mut ViewContext<Self>) {
+        self.download.update(cx, |_this, cx| {
+            cx.emit(DownloadEvent::AddFromClipboard);
+        })
+    }
+
+    #[inline]
     fn render_title_middle(&self, cx: &mut ViewContext<Self>) -> impl IntoElement {
         let theme = cx.theme();
 
@@ -235,7 +293,47 @@ impl App {
                 .border_color(theme.border)
                 .rounded_lg()
                 .child(self.search_input.clone()),
-            AppState::Download => div(),
+            AppState::Download => match self.download.read(cx).has_login() {
+                true => div()
+                    .flex()
+                    .justify_center()
+                    .items_center()
+                    .px_2()
+                    .gap_1()
+                    .child(
+                        Button::new("logout")
+                            .icon(IconName::LogOut)
+                            .ghost()
+                            .small()
+                            .tooltip("退出登录")
+                            .on_click(cx.listener(Self::logout_download)),
+                    )
+                    .child(
+                        Button::new("pause-all")
+                            .icon(IconName::CirclePause)
+                            .ghost()
+                            .small()
+                            .tooltip("全部暂停")
+                            .on_click(cx.listener(Self::pause_all)),
+                    )
+                    .child(
+                        Button::new("resume-all")
+                            .icon(IconName::FastForward)
+                            .ghost()
+                            .small()
+                            .tooltip("全部开始")
+                            .on_click(cx.listener(Self::resume_all)),
+                    )
+                    .child(
+                        Button::new("add-new")
+                            .icon(IconName::ClipboardPlus)
+                            .ghost()
+                            .small()
+                            .tooltip("从剪切板添加")
+                            .on_click(cx.listener(Self::add_from_clipboard)),
+                    ),
+                false => div(),
+            },
             AppState::License(_) => div(),
         }
     }
@@ -261,6 +359,7 @@ impl App {
                     .icon(Self::theme_icon(cx))
                     .ghost()
                     .small()
+                    .tooltip("主题")
                     .on_click(Self::change_color_mode),
             )
             .child(
@@ -268,6 +367,7 @@ impl App {
                     .icon(IconName::CopyRight)
                     .ghost()
                     .small()
+                    .tooltip("开源协议")
                     .selected(matches!(self.state, AppState::License(_)))
                     .on_click(cx.listener(Self::switch_license)),
             )
@@ -276,6 +376,7 @@ impl App {
                     .icon(IconName::Github)
                     .ghost()
                     .small()
+                    .tooltip("打开主页")
                     .on_click(Self::open_home_page),
             )
     }

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use gpui::{
-    div, px, Div, Entity, EventEmitter, InteractiveElement, IntoElement, MouseButton,
+    div, px, AnyElement, Entity, EventEmitter, InteractiveElement, IntoElement, MouseButton,
     ParentElement, Render, Styled, View, ViewContext, VisualContext, WindowContext,
 };
 use icons::IconName;
@@ -69,74 +69,68 @@ impl Search {
     }
 
     #[inline]
-    fn render_items(&self, cx: &mut ViewContext<Self>) -> Div {
+    fn render_items(&self, cx: &mut ViewContext<Self>) -> impl IntoElement {
         let theme = cx.theme();
         let selected_item = self.selected_item;
         let len = self.items.len();
 
-        div().size_full().pl_2().child(
-            div().size_full().overflow_hidden().rounded_md().child(
+        div()
+            .size_full()
+            .pl_2()
+            .scrollable(cx.view().entity_id(), ScrollbarAxis::Vertical)
+            .children(self.items.iter().enumerate().map(|(idx, item)| {
                 div()
-                    .scrollable(cx.view().entity_id(), ScrollbarAxis::Vertical)
-                    .children(self.items.iter().enumerate().map(|(idx, item)| {
+                    .when(idx != 0 && idx != len, |this| this.pt_1().pb_1())
+                    .when(idx == 0, |this| this.pt_2().pb_1())
+                    .when(idx == len - 1, |this| this.pt_1().pb_2())
+                    .pr_3()
+                    .child(
                         div()
-                            .when(idx != 0 && idx != len, |this| this.pt_1().pb_1())
-                            .when(idx == 0, |this| this.pt_2().pb_1())
-                            .when(idx == len - 1, |this| this.pt_1().pb_2())
-                            .pr_3()
+                            .p_2()
+                            .bg(theme.secondary)
+                            .rounded_md()
+                            .shadow_sm()
+                            .border_1()
+                            .border_color(theme.border)
                             .child(
                                 div()
-                                    .p_2()
-                                    .bg(theme.secondary)
-                                    .rounded_md()
-                                    .shadow_sm()
-                                    .border_1()
-                                    .border_color(theme.border)
-                                    .child(
-                                        div()
-                                            .font_bold()
-                                            .text_lg()
-                                            .text_color(theme.primary)
-                                            .child(item.title()),
-                                    )
-                                    .child(
-                                        div()
-                                            .text_color(theme.secondary_foreground)
-                                            .flex()
-                                            .justify_between()
-                                            .pt_2()
-                                            .child(Label::new(item.size()))
-                                            .child(Label::new(item.date())),
-                                    )
-                                    .when_some(selected_item, |this, selected| {
-                                        if selected == idx {
-                                            this.shadow_none().border_color(theme.primary_active)
-                                        } else {
-                                            this
-                                        }
-                                    })
-                                    .on_mouse_down(
-                                        MouseButton::Left,
-                                        cx.listener({
-                                            let url = item.url();
-                                            move |this, _event, cx| {
-                                                this.load_preview(
-                                                    selected_item,
-                                                    idx,
-                                                    url.clone(),
-                                                    cx,
-                                                );
-                                            }
-                                        }),
-                                    ),
+                                    .font_bold()
+                                    .text_lg()
+                                    .text_color(theme.primary)
+                                    .text_ellipsis()
+                                    .child(item.title()),
                             )
-                    })),
-            ),
-        )
+                            .child(
+                                div()
+                                    .text_color(theme.secondary_foreground)
+                                    .flex()
+                                    .justify_between()
+                                    .pt_2()
+                                    .child(Label::new(item.size()))
+                                    .child(Label::new(item.date())),
+                            )
+                            .when_some(selected_item, |this, selected| {
+                                if selected == idx {
+                                    this.shadow_none().border_color(theme.primary_active)
+                                } else {
+                                    this
+                                }
+                            })
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener({
+                                    let url = item.url();
+                                    move |this, _event, cx| {
+                                        this.load_preview(selected_item, idx, url.clone(), cx);
+                                    }
+                                }),
+                            ),
+                    )
+            }))
     }
 
     #[inline]
-    fn render_loading() -> Div {
+    fn render_loading() -> impl IntoElement {
         div()
             .size_full()
             .flex()
@@ -146,10 +140,10 @@ impl Search {
     }
 
     #[inline]
-    fn render_content(&self, cx: &mut ViewContext<Self>) -> impl IntoElement {
+    fn render_content(&self, cx: &mut ViewContext<Self>) -> AnyElement {
         match self.is_loading {
-            true => Self::render_loading(),
-            false => self.render_items(cx),
+            true => Self::render_loading().into_any_element(),
+            false => self.render_items(cx).into_any_element(),
         }
     }
 }

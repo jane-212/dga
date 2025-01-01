@@ -5,8 +5,8 @@ use std::sync::Arc;
 
 use error::Result;
 use gpui::{
-    div, IntoElement, ParentElement, Render, SharedString, Styled, Task, View, ViewContext,
-    VisualContext, WeakView, WindowContext,
+    div, EventEmitter, IntoElement, ParentElement, Render, SharedString, Styled, Task, View,
+    ViewContext, VisualContext, WeakView, WindowContext,
 };
 use icons::IconName;
 use magnet::{FoundItem, FoundPreview, Magnet, Previewable};
@@ -31,6 +31,15 @@ impl Home {
             cx.subscribe(&search, |this: &mut Self, _search, event, cx| match event {
                 search::SearchEvent::Preview(url) => this.preview(url.clone(), cx),
             })
+            .detach();
+            cx.subscribe(
+                &preview,
+                |_this: &mut Self, _preview, event, cx| match event {
+                    preview::PreviewEvent::AddToDownload(new) => {
+                        cx.emit(HomeEvent::AddToDownload(new.clone()))
+                    }
+                },
+            )
             .detach();
             if let Some(app) = app.upgrade() {
                 let search = search.clone();
@@ -104,7 +113,7 @@ impl Home {
     }
 
     #[inline]
-    fn notify_too_quick<T: 'static>(cx: &mut ViewContext<T>) {
+    fn notify_too_quick(cx: &mut ViewContext<Self>) {
         cx.push_notification(Notification::new("太快啦").icon(IconName::Info));
     }
 
@@ -174,3 +183,9 @@ impl Render for Home {
             .child(self.preview.clone())
     }
 }
+
+pub enum HomeEvent {
+    AddToDownload(SharedString),
+}
+
+impl EventEmitter<HomeEvent> for Home {}

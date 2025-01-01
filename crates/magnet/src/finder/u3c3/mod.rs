@@ -47,9 +47,12 @@ impl U3C3 {
             .rev()
             .collect();
 
+        const PAD: f64 = 1024.0;
         let size = match signal.to_uppercase().as_str() {
-            "GB" => number.map(|number| (number * 1024.0 * 1024.0) as u32),
-            "MB" => number.map(|number| (number * 1024.0) as u32),
+            "GB" => number.map(|number| (number * PAD.powi(3)) as u32),
+            "MB" => number.map(|number| (number * PAD.powi(2)) as u32),
+            "KB" => number.map(|number| (number * PAD.powi(1)) as u32),
+            "B" => number.map(|number| number as u32),
             _ => None,
         }
         .unwrap_or(0);

@@ -21,7 +21,7 @@ fn main() {
 }
 
 fn window_options(cx: &mut AppContext) -> WindowOptions {
-    let window_bounds = Bounds::centered(None, size(px(800.0), px(600.0)), cx);
+    let window_bounds = Bounds::centered(None, size(px(900.0), px(600.0)), cx);
 
     WindowOptions {
         window_bounds: Some(WindowBounds::Windowed(window_bounds)),
@@ -30,7 +30,7 @@ fn window_options(cx: &mut AppContext) -> WindowOptions {
             appears_transparent: true,
             traffic_light_position: Some(point(px(9.0), px(9.0))),
         }),
-        window_min_size: Some(size(px(800.0), px(600.0))),
+        window_min_size: Some(size(px(900.0), px(600.0))),
         ..Default::default()
     }
 }

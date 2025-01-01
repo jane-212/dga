@@ -7,3 +7,5 @@ edition = "2021"
 thiserror.workspace = true
 reqwest.workspace = true
 tokio.workspace = true
+qbit-rs.workspace = true
+anyhow.workspace = true

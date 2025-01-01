@@ -2,14 +2,15 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use gpui::{
-    div, img, ClipboardItem, Div, Entity, IntoElement, ParentElement, Render, Styled, View,
-    ViewContext, VisualContext, WindowContext,
+    div, img, ClipboardItem, Div, Entity, EventEmitter, IntoElement, ParentElement, Render,
+    SharedString, Styled, View, ViewContext, VisualContext, WindowContext,
 };
 use icons::IconName;
 use magnet::FoundPreview;
 use ui::{
-    button::Button, indicator::Indicator, label::Label, prelude::FluentBuilder,
-    scroll::ScrollbarAxis, theme::ActiveTheme, Sizable, StyledExt,
+    button::Button, indicator::Indicator, label::Label, notification::Notification,
+    prelude::FluentBuilder, scroll::ScrollbarAxis, theme::ActiveTheme, ContextModal, Sizable,
+    StyledExt,
 };
 
 use crate::LogErr;
@@ -17,6 +18,7 @@ use crate::LogErr;
 pub struct Preview {
     is_loading: bool,
     copied: bool,
+    added: bool,
     view: Option<Arc<dyn FoundPreview>>,
 }
 
@@ -25,6 +27,7 @@ impl Preview {
         cx.new_view(|_cx| Self {
             is_loading: false,
             copied: false,
+            added: false,
             view: None,
         })
     }
@@ -43,6 +46,7 @@ impl Preview {
     pub fn loaded(&mut self, preview: Arc<dyn FoundPreview>) {
         self.is_loading = false;
         self.copied = false;
+        self.added = false;
         self.view = Some(preview);
     }
 
@@ -54,6 +58,7 @@ impl Preview {
     #[inline]
     fn copy(&mut self, magnet: String, cx: &mut ViewContext<Self>) {
         cx.write_to_clipboard(ClipboardItem::new_string(magnet));
+        cx.push_notification(Notification::new("已复制").icon(IconName::Info));
         self.copied = true;
         cx.notify();
         Self::delay_remove_copy_check(cx);
@@ -65,6 +70,19 @@ impl Preview {
             cx.background_executor().timer(Duration::from_secs(1)).await;
             this.update(&mut cx, |this, cx| {
                 this.copied = false;
+                cx.notify();
+            })
+            .log_err();
+        })
+        .detach();
+    }
+
+    #[inline]
+    fn delay_remove_add_check(cx: &mut ViewContext<Self>) {
+        cx.spawn(|this, mut cx| async move {
+            cx.background_executor().timer(Duration::from_secs(1)).await;
+            this.update(&mut cx, |this, cx| {
+                this.added = false;
                 cx.notify();
             })
             .log_err();
@@ -118,22 +136,49 @@ impl Preview {
                                         .child(preview.magnet()),
                                 )
                                 .child(
-                                    Button::new("copy")
-                                        .icon(if self.copied {
-                                            IconName::Check
-                                        } else {
-                                            IconName::Copy
-                                        })
-                                        .small()
-                                        .on_click(cx.listener({
-                                            let copied = self.copied;
-                                            let magnet = preview.magnet();
-                                            move |this, _event, cx| {
-                                                if !copied {
-                                                    this.copy(magnet.to_string(), cx);
-                                                }
-                                            }
-                                        })),
+                                    div()
+                                        .flex()
+                                        .gap_2()
+                                        .child(
+                                            Button::new("add-to-download")
+                                                .icon(if self.added {
+                                                    IconName::Check
+                                                } else {
+                                                    IconName::Plus
+                                                })
+                                                .small()
+                                                .on_click(cx.listener({
+                                                    let magnet = preview.magnet();
+                                                    move |this, _event, cx| {
+                                                        if !this.added {
+                                                            cx.emit(PreviewEvent::AddToDownload(
+                                                                magnet.clone(),
+                                                            ));
+                                                            this.added = true;
+                                                            cx.notify();
+                                                            Self::delay_remove_add_check(cx);
+                                                        }
+                                                    }
+                                                })),
+                                        )
+                                        .child(
+                                            Button::new("copy")
+                                                .icon(if self.copied {
+                                                    IconName::Check
+                                                } else {
+                                                    IconName::Copy
+                                                })
+                                                .small()
+                                                .on_click(cx.listener({
+                                                    let copied = self.copied;
+                                                    let magnet = preview.magnet();
+                                                    move |this, _event, cx| {
+                                                        if !copied {
+                                                            this.copy(magnet.to_string(), cx);
+                                                        }
+                                                    }
+                                                })),
+                                        ),
                                 ),
                         )
                         .child(
@@ -169,3 +214,9 @@ impl Render for Preview {
             })
     }
 }
+
+pub enum PreviewEvent {
+    AddToDownload(SharedString),
+}
+
+impl EventEmitter<PreviewEvent> for Preview {}

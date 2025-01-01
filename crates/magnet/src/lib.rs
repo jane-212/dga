@@ -116,15 +116,18 @@ impl Size {
     fn to_format(size: u32) -> SharedString {
         let mut count = 0;
         let mut size = size as f64;
-        while size > 1024.0 {
+        while size >= 1024.0 {
             size /= 1024.0;
             count += 1;
         }
 
         let signal = match count {
-            1 => "MB",
-            2 => "GB",
-            _ => "KB",
+            0 => "B",
+            1 => "KB",
+            2 => "MB",
+            3 => "GB",
+            4 => "TB",
+            _ => "PB",
         };
 
         format!("{:.2}{}", size, signal).into()
