@@ -1,3 +1,5 @@
+set shell := ["bash", "-uc"]
+
 # print help
 default:
     just --list
