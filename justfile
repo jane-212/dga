@@ -14,7 +14,7 @@ release:
 
 # install dependencies
 install-dependencies:
-    if [ "{{os()}}" == "linux" ]; then \
+    if [[ "{{os()}}" == "linux" ]]; then \
         sudo apt-get update; \
         sudo apt-get -y install libgtk-3-dev; \
         sudo apt-get -y install libsoup-3.0-dev; \
