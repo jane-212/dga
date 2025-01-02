@@ -6,9 +6,9 @@ use std::{
 use chrono::DateTime;
 use error::Result;
 use gpui::{
-    div, px, AsyncWindowContext, ClickEvent, Entity, EventEmitter, FocusHandle, InteractiveElement,
-    IntoElement, ParentElement, Pixels, Render, RenderOnce, SharedString, Styled, View,
-    ViewContext, VisualContext, WeakView, WindowContext,
+    div, list, px, AsyncWindowContext, ClickEvent, EventEmitter, FocusHandle, InteractiveElement,
+    IntoElement, ListAlignment, ListState, ParentElement, Pixels, Render, RenderOnce, SharedString,
+    Styled, View, ViewContext, VisualContext, WeakView, WindowContext,
 };
 use icons::IconName;
 use qbit_rs::{
@@ -22,14 +22,14 @@ use ui::{
     label::Label,
     notification::Notification,
     prelude::FluentBuilder,
-    scroll::ScrollbarAxis,
     theme::ActiveTheme,
-    ContextModal, Disableable, Icon, Sizable, StyledExt,
+    ContextModal, Disableable, Icon, Sizable,
 };
 use url::Url;
 use utils::LogErr;
 
 pub struct Download {
+    list_state: ListState,
     client: Option<Arc<Qbit>>,
     magnets: Vec<Magnet>,
     total_speed: (SharedString, SharedString),
@@ -53,73 +53,90 @@ impl EventEmitter<DownloadEvent> for Download {}
 
 impl Download {
     pub fn new(cx: &mut WindowContext) -> View<Self> {
-        let download = cx.new_view(|cx| {
-            let (host, username, password) = utils::read_login_info();
-            let host = cx.new_view(|cx| {
-                let mut input = TextInput::new(cx)
-                    .placeholder("地址")
-                    .appearance(false)
-                    .small()
-                    .prefix(|_cx| div().pl_2().child(Icon::new(IconName::Globe).small()));
-                if let Some(host) = host {
-                    input.set_text(host, cx);
+        let download =
+            cx.new_view(|cx| {
+                let (host, username, password) = utils::read_login_info();
+                let host = cx.new_view(|cx| {
+                    let mut input = TextInput::new(cx)
+                        .placeholder("地址")
+                        .appearance(false)
+                        .small()
+                        .prefix(|_cx| div().pl_2().child(Icon::new(IconName::Globe).small()));
+                    if let Some(host) = host {
+                        input.set_text(host, cx);
+                    }
+
+                    input
+                });
+                let username = cx.new_view(|cx| {
+                    let mut input = TextInput::new(cx)
+                        .placeholder("用户名")
+                        .appearance(false)
+                        .small()
+                        .prefix(|_cx| div().pl_2().child(Icon::new(IconName::User).small()));
+                    if let Some(username) = username {
+                        input.set_text(username, cx);
+                    }
+
+                    input
+                });
+                let password = cx.new_view(|cx| {
+                    let mut input = TextInput::new(cx)
+                        .placeholder("密码")
+                        .appearance(false)
+                        .small()
+                        .prefix(|_cx| div().pl_2().child(Icon::new(IconName::Lock).small()));
+                    input.set_masked(true, cx);
+                    if let Some(password) = password {
+                        input.set_text(password, cx);
+                    }
+
+                    input
+                });
+                let popup_check = PopupCheck::new(cx);
+                cx.subscribe(&popup_check, |this: &mut Self, _delete_check, event, cx| {
+                    let CheckEvent::Confirm(hash, delete_file) = event;
+                    this.delete_one(hash.clone(), *delete_file, cx);
+                })
+                .detach();
+                cx.on_release(|this, _window_handle, cx| {
+                    let host = this.host.read(cx).text();
+                    let username = this.username.read(cx).text();
+                    let password = this.password.read(cx).text();
+
+                    utils::write_login_info(host, username, password);
+                })
+                .detach();
+                let view = cx.view().downgrade();
+                let list_state =
+                    ListState::new(1, ListAlignment::Top, px(1000.0), move |ix, cx| match view
+                        .upgrade()
+                    {
+                        Some(view) => view.update(cx, |this, cx| {
+                            if ix == 0 {
+                                Self::render_banner(cx).into_any_element()
+                            } else {
+                                let magnet = &this.magnets[ix - 1];
+                                Self::render_list_item(magnet, ix - 1, cx).into_any_element()
+                            }
+                        }),
+                        None => div().into_any_element(),
+                    });
+
+                Self {
+                    list_state,
+                    client: None,
+                    total_speed: ("0 B/s".into(), "0 B/s".into()),
+                    magnets: Vec::new(),
+                    popup_check,
+                    host,
+                    username,
+                    password,
+                    is_login: false,
+                    is_pause: false,
+                    focus_handle: cx.focus_handle(),
                 }
-
-                input
             });
-            let username = cx.new_view(|cx| {
-                let mut input = TextInput::new(cx)
-                    .placeholder("用户名")
-                    .appearance(false)
-                    .small()
-                    .prefix(|_cx| div().pl_2().child(Icon::new(IconName::User).small()));
-                if let Some(username) = username {
-                    input.set_text(username, cx);
-                }
-
-                input
-            });
-            let password = cx.new_view(|cx| {
-                let mut input = TextInput::new(cx)
-                    .placeholder("密码")
-                    .appearance(false)
-                    .small()
-                    .prefix(|_cx| div().pl_2().child(Icon::new(IconName::Lock).small()));
-                input.set_masked(true, cx);
-                if let Some(password) = password {
-                    input.set_text(password, cx);
-                }
-
-                input
-            });
-            let popup_check = PopupCheck::new(cx);
-            cx.subscribe(&popup_check, |this: &mut Self, _delete_check, event, cx| {
-                let CheckEvent::Confirm(hash, delete_file) = event;
-                this.delete_one(hash.clone(), *delete_file, cx);
-            })
-            .detach();
-            cx.on_release(|this, _window_handle, cx| {
-                let host = this.host.read(cx).text();
-                let username = this.username.read(cx).text();
-                let password = this.password.read(cx).text();
-
-                utils::write_login_info(host, username, password);
-            })
-            .detach();
-
-            Self {
-                client: None,
-                total_speed: ("0 B/s".into(), "0 B/s".into()),
-                magnets: Vec::new(),
-                popup_check,
-                host,
-                username,
-                password,
-                is_login: false,
-                is_pause: false,
-                focus_handle: cx.focus_handle(),
-            }
-        });
         cx.subscribe(&download, Self::handle_event).detach();
 
         download
@@ -327,8 +344,12 @@ impl Download {
         let total_upload_speed = human_read_speed(total_upload_speed);
         cx.update(|cx| {
             this.update(cx, |this, cx| {
+                let count = magnets.len();
                 this.total_speed = (total_download_speed, total_upload_speed);
                 this.magnets = magnets;
+                let offset = this.list_state.logical_scroll_top();
+                this.list_state.reset(count + 1);
+                this.list_state.scroll_to(offset);
                 cx.notify();
             })
         })?;
@@ -423,117 +444,116 @@ impl Download {
         .detach();
     }
 
-    const OTHER_WIDTH: Pixels = px(8. * 2. + 4. + 32. + 96. * 3. + 80. + 64. + 165. + 105. * 2.);
-
-    #[inline]
-    fn render_list(&self, cx: &mut ViewContext<Self>) -> impl IntoElement {
+    fn render_banner(cx: &mut ViewContext<Self>) -> impl IntoElement {
         let theme = cx.theme();
         let width = cx.viewport_size().width - Self::OTHER_WIDTH;
 
         div()
-            .p_2()
-            .scrollable(cx.view().entity_id(), ScrollbarAxis::Vertical)
+            .flex()
+            .py_2()
+            .bg(theme.secondary)
+            .child(Label::new("").text_center().w_8())
+            .child(Label::new("名称").pr_1().w(width))
+            .child(Label::new("状态").pl_1().pr_1().w_24())
+            .child(Label::new("操作").pl_1().pr_1().w_24())
+            .child(Label::new("进度").pl_1().pr_1().w_20())
+            .child(Label::new("大小").pl_1().pr_1().w_24())
+            .child(Label::new("下载").pl_1().pr_1().w(px(105.0)))
+            .child(Label::new("上传").pl_1().pr_1().w(px(105.0)))
+            .child(Label::new("比率").pl_1().pr_1().w_16())
+            .child(Label::new("添加日期").pl_1().pr_1().w(px(165.0)))
+    }
+
+    fn render_list_item(
+        magnet: &Magnet,
+        ix: usize,
+        cx: &mut ViewContext<Self>,
+    ) -> impl IntoElement {
+        let theme = cx.theme();
+        let width = cx.viewport_size().width - Self::OTHER_WIDTH;
+
+        div()
+            .flex()
+            .items_center()
+            .py_2()
+            .bg(theme.secondary)
+            .border_t_1()
+            .border_color(theme.border)
             .child(
                 div()
                     .flex()
-                    .rounded_md()
-                    .shadow_sm()
-                    .mr_1()
-                    .py_2()
-                    .bg(theme.secondary)
-                    .child(Label::new("").text_center().w_8())
-                    .child(Label::new("名称").pr_1().w(width))
-                    .child(Label::new("状态").pl_1().pr_1().w_24())
-                    .child(Label::new("操作").pl_1().pr_1().w_24())
-                    .child(Label::new("进度").pl_1().pr_1().w_20())
-                    .child(Label::new("大小").pl_1().pr_1().w_24())
-                    .child(Label::new("下载").pl_1().pr_1().w(px(105.0)))
-                    .child(Label::new("上传").pl_1().pr_1().w(px(105.0)))
-                    .child(Label::new("比率").pl_1().pr_1().w_16())
-                    .child(Label::new("添加日期").pl_1().pr_1().w(px(165.0))),
+                    .justify_center()
+                    .child(Icon::new(magnet.icon()).small())
+                    .w_8(),
             )
-            .children(self.magnets.iter().enumerate().map(|(idx, magnet)| {
+            .child(Label::new(magnet.name.clone()).pr_1().w(width))
+            .child(Label::new(magnet.state.clone()).pl_1().pr_1().w_24())
+            .child(
+                div()
+                    .flex()
+                    .px_1()
+                    .gap_1()
+                    .child(
+                        Button::new(("pause", ix))
+                            .icon(IconName::CirclePause)
+                            .small()
+                            .tooltip("暂停")
+                            .on_click(cx.listener({
+                                let hash = magnet.hash.clone();
+                                move |this, event, cx| {
+                                    this.pause_one(hash.clone(), event, cx);
+                                }
+                            })),
+                    )
+                    .child(
+                        Button::new(("resume", ix))
+                            .icon(IconName::FastForward)
+                            .small()
+                            .tooltip("开始")
+                            .on_click(cx.listener({
+                                let hash = magnet.hash.clone();
+                                move |this, event, cx| {
+                                    this.resume_one(hash.clone(), event, cx);
+                                }
+                            })),
+                    )
+                    .child(
+                        Button::new(("delete", ix))
+                            .icon(IconName::Trash2)
+                            .small()
+                            .tooltip("删除")
+                            .on_click(cx.listener({
+                                let hash = magnet.hash.clone();
+                                let name = magnet.name.clone();
+                                move |this, event, cx| {
+                                    this.delete_check(name.clone(), hash.clone(), event, cx);
+                                }
+                            })),
+                    )
+                    .w_24(),
+            )
+            .child(
                 div()
                     .flex()
                     .items_center()
-                    .rounded_md()
-                    .shadow_sm()
-                    .mt_1()
-                    .mr_1()
-                    .py_2()
-                    .bg(theme.secondary)
-                    .child(
-                        div()
-                            .flex()
-                            .justify_center()
-                            .child(Icon::new(magnet.icon()).small())
-                            .w_8(),
-                    )
-                    .child(Label::new(magnet.name.clone()).pr_1().w(width))
-                    .child(Label::new(magnet.state.clone()).pl_1().pr_1().w_24())
-                    .child(
-                        div()
-                            .flex()
-                            .px_1()
-                            .gap_1()
-                            .child(
-                                Button::new(("pause", idx))
-                                    .icon(IconName::CirclePause)
-                                    .small()
-                                    .tooltip("暂停")
-                                    .on_click(cx.listener({
-                                        let hash = magnet.hash.clone();
-                                        move |this, event, cx| {
-                                            this.pause_one(hash.clone(), event, cx);
-                                        }
-                                    })),
-                            )
-                            .child(
-                                Button::new(("resume", idx))
-                                    .icon(IconName::FastForward)
-                                    .small()
-                                    .tooltip("开始")
-                                    .on_click(cx.listener({
-                                        let hash = magnet.hash.clone();
-                                        move |this, event, cx| {
-                                            this.resume_one(hash.clone(), event, cx);
-                                        }
-                                    })),
-                            )
-                            .child(
-                                Button::new(("delete", idx))
-                                    .icon(IconName::Trash2)
-                                    .small()
-                                    .tooltip("删除")
-                                    .on_click(cx.listener({
-                                        let hash = magnet.hash.clone();
-                                        let name = magnet.name.clone();
-                                        move |this, event, cx| {
-                                            this.delete_check(
-                                                name.clone(),
-                                                hash.clone(),
-                                                event,
-                                                cx,
-                                            );
-                                        }
-                                    })),
-                            )
-                            .w_24(),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .child(Progress::new(magnet.progress))
-                            .px_1()
-                            .w_20(),
-                    )
-                    .child(Label::new(magnet.size.clone()).px_1().w_24())
-                    .child(Label::new(magnet.download.clone()).px_1().w(px(105.0)))
-                    .child(Label::new(magnet.upload.clone()).px_1().w(px(105.0)))
-                    .child(Label::new(magnet.ratio.clone()).px_1().w_16())
-                    .child(Label::new(magnet.add_on.clone()).px_1().w(px(165.0)))
-            }))
+                    .child(Progress::new(magnet.progress))
+                    .px_1()
+                    .w_20(),
+            )
+            .child(Label::new(magnet.size.clone()).px_1().w_24())
+            .child(Label::new(magnet.download.clone()).px_1().w(px(105.0)))
+            .child(Label::new(magnet.upload.clone()).px_1().w(px(105.0)))
+            .child(Label::new(magnet.ratio.clone()).px_1().w_16())
+            .child(Label::new(magnet.add_on.clone()).px_1().w(px(165.0)))
+    }
+
+    const OTHER_WIDTH: Pixels = px(32. + 96. * 3. + 80. + 64. + 165. + 105. * 2.);
+
+    #[inline]
+    fn render_list(&self, _cx: &mut ViewContext<Self>) -> impl IntoElement {
+        div()
+            .size_full()
+            .child(list(self.list_state.clone()).size_full())
     }
 
     #[inline]
