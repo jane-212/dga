@@ -1,0 +1,25 @@
+name: ci
+
+on:
+  pull_request:
+    types:
+      - opened
+
+jobs:
+  run-test:
+    name: run-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check spelling
+        uses: crate-ci/typos@master
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+
+      - name: Run test
+        run: |
+          cargo test
