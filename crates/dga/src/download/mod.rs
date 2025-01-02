@@ -15,7 +15,6 @@ use qbit_rs::{
     model::{AddTorrentArg, Credential, GetTorrentListArg, State, Torrent, TorrentSource},
     Qbit,
 };
-use runtime::RUNTIME;
 use ui::{
     button::{Button, ButtonVariants},
     checkbox::Checkbox,
@@ -28,8 +27,7 @@ use ui::{
     ContextModal, Disableable, Icon, Sizable, StyledExt,
 };
 use url::Url;
-
-use crate::LogErr;
+use utils::LogErr;
 
 pub struct Download {
     client: Option<Arc<Qbit>>,
@@ -153,23 +151,15 @@ impl Download {
                 return;
             };
 
-            let res = RUNTIME.spawn(async move { client.resume_torrents(hashes).await });
-            match res.await {
-                Ok(res) => match res {
-                    Ok(_) => cx.update(|cx| {
-                        cx.push_notification(Notification::new("已继续").icon(IconName::Info));
-                    }),
-                    Err(e) => cx.update(|cx| {
-                        cx.push_notification(
-                            Notification::new(e.to_string()).icon(IconName::CircleX),
-                        );
-                    }),
+            utils::handle_qbit_operation(
+                || async move {
+                    client.resume_torrents(hashes).await?;
+                    Ok(())
                 },
-                Err(e) => cx.update(|cx| {
-                    cx.push_notification(Notification::new(e.to_string()).icon(IconName::CircleX));
-                }),
-            }
-            .log_err();
+                "已继续",
+                &mut cx,
+            )
+            .await;
         }
     }
 
@@ -192,23 +182,15 @@ impl Download {
                 return;
             };
 
-            let res = RUNTIME.spawn(async move { client.pause_torrents(hashes).await });
-            match res.await {
-                Ok(res) => match res {
-                    Ok(_) => cx.update(|cx| {
-                        cx.push_notification(Notification::new("已暂停").icon(IconName::Info));
-                    }),
-                    Err(e) => cx.update(|cx| {
-                        cx.push_notification(
-                            Notification::new(e.to_string()).icon(IconName::CircleX),
-                        );
-                    }),
+            utils::handle_qbit_operation(
+                || async move {
+                    client.pause_torrents(hashes).await?;
+                    Ok(())
                 },
-                Err(e) => cx.update(|cx| {
-                    cx.push_notification(Notification::new(e.to_string()).icon(IconName::CircleX));
-                }),
-            }
-            .log_err();
+                "已暂停",
+                &mut cx,
+            )
+            .await;
         }
     }
 
@@ -288,9 +270,12 @@ impl Download {
     }
 
     async fn login_task(client: Arc<Qbit>) -> Result<String> {
-        let version = RUNTIME
-            .spawn(async move { client.get_version().await })
-            .await??;
+        let version = utils::handle_tokio_spawn(|| async move {
+            let version = client.get_version().await?;
+
+            Ok(version)
+        })
+        .await?;
 
         Ok(version)
     }
@@ -300,18 +285,19 @@ impl Download {
         client: Arc<Qbit>,
         mut cx: AsyncWindowContext,
     ) -> Result<()> {
-        let list = RUNTIME
-            .spawn(async move {
-                client
-                    .get_torrent_list(
-                        GetTorrentListArg::builder()
-                            .sort("dlspeed".to_string())
-                            .reverse(true)
-                            .build(),
-                    )
-                    .await
-            })
-            .await??;
+        let list = utils::handle_tokio_spawn(|| async move {
+            let list = client
+                .get_torrent_list(
+                    GetTorrentListArg::builder()
+                        .sort("dlspeed".to_string())
+                        .reverse(true)
+                        .build(),
+                )
+                .await?;
+
+            Ok(list)
+        })
+        .await?;
         let magnets = list.into_iter().map(Magnet::from).collect::<Vec<_>>();
         let total_download_speed = magnets.iter().map(|magnet| magnet.total.0).sum::<i64>();
         let total_download_speed = human_read_speed(total_download_speed);
@@ -542,24 +528,15 @@ impl Download {
         };
         let client = client.clone();
         cx.spawn(|_this, mut cx| async move {
-            let res =
-                RUNTIME.spawn(async move { client.pause_torrents(&[hash.to_string()]).await });
-            match res.await {
-                Ok(res) => match res {
-                    Ok(_) => cx.update(|cx| {
-                        cx.push_notification(Notification::new("已暂停").icon(IconName::Info));
-                    }),
-                    Err(e) => cx.update(|cx| {
-                        cx.push_notification(
-                            Notification::new(e.to_string()).icon(IconName::CircleX),
-                        );
-                    }),
+            utils::handle_qbit_operation(
+                || async move {
+                    client.pause_torrents(&[hash.to_string()]).await?;
+                    Ok(())
                 },
-                Err(e) => cx.update(|cx| {
-                    cx.push_notification(Notification::new(e.to_string()).icon(IconName::CircleX));
-                }),
-            }
-            .log_err();
+                "已暂停",
+                &mut cx,
+            )
+            .await;
         })
         .detach();
     }
@@ -591,27 +568,16 @@ impl Download {
                     let arg = AddTorrentArg::builder()
                         .source(TorrentSource::Urls { urls })
                         .build();
-                    let res = RUNTIME.spawn(async move { client.add_torrent(arg).await });
-                    match res.await {
-                        Ok(res) => match res {
-                            Ok(_) => cx.update(|cx| {
-                                cx.push_notification(
-                                    Notification::new("添加成功").icon(IconName::Info),
-                                );
-                            }),
-                            Err(e) => cx.update(|cx| {
-                                cx.push_notification(
-                                    Notification::new(e.to_string()).icon(IconName::CircleX),
-                                );
-                            }),
+
+                    utils::handle_qbit_operation(
+                        || async move {
+                            client.add_torrent(arg).await?;
+                            Ok(())
                         },
-                        Err(e) => cx.update(|cx| {
-                            cx.push_notification(
-                                Notification::new(e.to_string()).icon(IconName::CircleX),
-                            );
-                        }),
-                    }
-                    .log_err();
+                        "添加成功",
+                        &mut cx,
+                    )
+                    .await;
                 }
                 Err(e) => cx
                     .update(|cx| {
@@ -656,27 +622,17 @@ impl Download {
         };
         let client = client.clone();
         cx.spawn(|_this, mut cx| async move {
-            let res = RUNTIME.spawn(async move {
-                client
-                    .delete_torrents(&[hash.to_string()], delete_file)
-                    .await
-            });
-            match res.await {
-                Ok(res) => match res {
-                    Ok(_) => cx.update(|cx| {
-                        cx.push_notification(Notification::new("已删除").icon(IconName::Info));
-                    }),
-                    Err(e) => cx.update(|cx| {
-                        cx.push_notification(
-                            Notification::new(e.to_string()).icon(IconName::CircleX),
-                        );
-                    }),
+            utils::handle_qbit_operation(
+                || async move {
+                    client
+                        .delete_torrents(&[hash.to_string()], delete_file)
+                        .await?;
+                    Ok(())
                 },
-                Err(e) => cx.update(|cx| {
-                    cx.push_notification(Notification::new(e.to_string()).icon(IconName::CircleX));
-                }),
-            }
-            .log_err();
+                "已删除",
+                &mut cx,
+            )
+            .await;
         })
         .detach();
     }
@@ -696,24 +652,15 @@ impl Download {
         };
         let client = client.clone();
         cx.spawn(|_this, mut cx| async move {
-            let res =
-                RUNTIME.spawn(async move { client.resume_torrents(&[hash.to_string()]).await });
-            match res.await {
-                Ok(res) => match res {
-                    Ok(_) => cx.update(|cx| {
-                        cx.push_notification(Notification::new("已继续").icon(IconName::Info));
-                    }),
-                    Err(e) => cx.update(|cx| {
-                        cx.push_notification(
-                            Notification::new(e.to_string()).icon(IconName::CircleX),
-                        );
-                    }),
+            utils::handle_qbit_operation(
+                || async move {
+                    client.resume_torrents(&[hash.to_string()]).await?;
+                    Ok(())
                 },
-                Err(e) => cx.update(|cx| {
-                    cx.push_notification(Notification::new(e.to_string()).icon(IconName::CircleX));
-                }),
-            }
-            .log_err();
+                "已继续",
+                &mut cx,
+            )
+            .await;
         })
         .detach();
     }

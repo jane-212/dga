@@ -13,8 +13,9 @@ use magnet::{FoundItem, FoundPreview, Magnet, Previewable};
 use preview::Preview;
 use search::Search;
 use ui::{notification::Notification, ContextModal};
+use utils::LogErr;
 
-use crate::{app::AppEvent, App, LogErr};
+use crate::{app::AppEvent, App};
 
 pub struct Home {
     magnet: Arc<Magnet>,
