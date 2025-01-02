@@ -281,7 +281,12 @@ impl Download {
         let list = RUNTIME
             .spawn(async move {
                 client
-                    .get_torrent_list(GetTorrentListArg::builder().build())
+                    .get_torrent_list(
+                        GetTorrentListArg::builder()
+                            .sort("dlspeed".to_string())
+                            .reverse(true)
+                            .build(),
+                    )
                     .await
             })
             .await??;
