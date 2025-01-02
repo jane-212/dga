@@ -76,7 +76,7 @@ jobs:
           echo "target flag is: ${{ env.TARGET_FLAGS }}"
           echo "target dir is: ${{ env.TARGET_DIR }}"
 
-      - name: Build archive (Windows)
+      - name: Install dependencies
         shell: bash
         if: matrix.os == 'ubuntu-latest'
         run: |
