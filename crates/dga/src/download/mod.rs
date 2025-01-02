@@ -15,7 +15,6 @@ use qbit_rs::{
     model::{AddTorrentArg, Credential, GetTorrentListArg, State, Torrent, TorrentSource},
     Qbit,
 };
-use runtime::RUNTIME;
 use ui::{
     button::{Button, ButtonVariants},
     checkbox::Checkbox,
@@ -28,12 +27,12 @@ use ui::{
     ContextModal, Disableable, Icon, Sizable, StyledExt,
 };
 use url::Url;
-
-use crate::LogErr;
+use utils::LogErr;
 
 pub struct Download {
     client: Option<Arc<Qbit>>,
     magnets: Vec<Magnet>,
+    total_speed: (SharedString, SharedString),
     host: View<TextInput>,
     username: View<TextInput>,
     password: View<TextInput>,
@@ -88,6 +87,7 @@ impl Download {
 
             Self {
                 client: None,
+                total_speed: ("0 B/s".into(), "0 B/s".into()),
                 magnets: Vec::new(),
                 popup_check,
                 host,
@@ -101,6 +101,14 @@ impl Download {
         cx.subscribe(&download, Self::handle_event).detach();
 
         download
+    }
+
+    pub fn total_download_speed(&self) -> SharedString {
+        self.total_speed.0.clone()
+    }
+
+    pub fn total_upload_speed(&self) -> SharedString {
+        self.total_speed.1.clone()
     }
 
     fn handle_event(this: View<Self>, event: &DownloadEvent, cx: &mut WindowContext) {
@@ -143,15 +151,15 @@ impl Download {
                 return;
             };
 
-            match client.resume_torrents(hashes).await {
-                Ok(_) => cx.update(|cx| {
-                    cx.push_notification(Notification::new("已继续").icon(IconName::Info));
-                }),
-                Err(e) => cx.update(|cx| {
-                    cx.push_notification(Notification::new(e.to_string()).icon(IconName::CircleX));
-                }),
-            }
-            .log_err();
+            utils::handle_qbit_operation(
+                || async move {
+                    client.resume_torrents(hashes).await?;
+                    Ok(())
+                },
+                "已继续",
+                &mut cx,
+            )
+            .await;
         }
     }
 
@@ -174,15 +182,15 @@ impl Download {
                 return;
             };
 
-            match client.pause_torrents(hashes).await {
-                Ok(_) => cx.update(|cx| {
-                    cx.push_notification(Notification::new("已暂停").icon(IconName::Info));
-                }),
-                Err(e) => cx.update(|cx| {
-                    cx.push_notification(Notification::new(e.to_string()).icon(IconName::CircleX));
-                }),
-            }
-            .log_err();
+            utils::handle_qbit_operation(
+                || async move {
+                    client.pause_torrents(hashes).await?;
+                    Ok(())
+                },
+                "已暂停",
+                &mut cx,
+            )
+            .await;
         }
     }
 
@@ -262,15 +270,14 @@ impl Download {
     }
 
     async fn login_task(client: Arc<Qbit>) -> Result<String> {
-        let version = RUNTIME
-            .spawn(async move { client.get_version().await })
-            .await??;
+        let version = utils::handle_tokio_spawn(|| async move {
+            let version = client.get_version().await?;
+
+            Ok(version)
+        })
+        .await?;
 
         Ok(version)
-    }
-
-    fn update_magnets(&mut self, magnets: Vec<Torrent>) {
-        self.magnets = magnets.into_iter().map(Magnet::from).collect();
     }
 
     async fn get_and_update(
@@ -278,21 +285,28 @@ impl Download {
         client: Arc<Qbit>,
         mut cx: AsyncWindowContext,
     ) -> Result<()> {
-        let list = RUNTIME
-            .spawn(async move {
-                client
-                    .get_torrent_list(
-                        GetTorrentListArg::builder()
-                            .sort("dlspeed".to_string())
-                            .reverse(true)
-                            .build(),
-                    )
-                    .await
-            })
-            .await??;
+        let list = utils::handle_tokio_spawn(|| async move {
+            let list = client
+                .get_torrent_list(
+                    GetTorrentListArg::builder()
+                        .sort("dlspeed".to_string())
+                        .reverse(true)
+                        .build(),
+                )
+                .await?;
+
+            Ok(list)
+        })
+        .await?;
+        let magnets = list.into_iter().map(Magnet::from).collect::<Vec<_>>();
+        let total_download_speed = magnets.iter().map(|magnet| magnet.total.0).sum::<i64>();
+        let total_download_speed = human_read_speed(total_download_speed);
+        let total_upload_speed = magnets.iter().map(|magnet| magnet.total.1).sum::<i64>();
+        let total_upload_speed = human_read_speed(total_upload_speed);
         cx.update(|cx| {
             this.update(cx, |this, cx| {
-                this.update_magnets(list);
+                this.total_speed = (total_download_speed, total_upload_speed);
+                this.magnets = magnets;
                 cx.notify();
             })
         })?;
@@ -301,26 +315,30 @@ impl Download {
     }
 
     fn start_update(this: WeakView<Self>, client: Weak<Qbit>, cx: AsyncWindowContext) {
-        cx.spawn(|mut cx| async move {
-            loop {
-                match (this.upgrade(), client.upgrade()) {
-                    (Some(this), Some(client)) => {
-                        let Ok(is_pause) = cx.update(|cx| this.read(cx).is_pause) else {
-                            break;
-                        };
+        cx.spawn({
+            let this = this.clone();
+            let client = client.clone();
+            |mut cx| async move {
+                loop {
+                    match (this.upgrade(), client.upgrade()) {
+                        (Some(this), Some(client)) => {
+                            let Ok(is_pause) = cx.update(|cx| this.read(cx).is_pause) else {
+                                break;
+                            };
 
-                        if !is_pause {
-                            Self::get_and_update(this, client, cx.clone())
-                                .await
-                                .log_err();
+                            if !is_pause {
+                                Self::get_and_update(this, client, cx.clone())
+                                    .await
+                                    .log_err();
+                            }
                         }
+                        _ => break,
                     }
-                    _ => break,
-                }
 
-                cx.background_executor()
-                    .timer(Duration::from_millis(1_500))
-                    .await;
+                    cx.background_executor()
+                        .timer(Duration::from_millis(1_500))
+                        .await;
+                }
             }
         })
         .detach();
@@ -511,15 +529,15 @@ impl Download {
         };
         let client = client.clone();
         cx.spawn(|_this, mut cx| async move {
-            match client.pause_torrents(&[hash.to_string()]).await {
-                Ok(_) => cx.update(|cx| {
-                    cx.push_notification(Notification::new("已暂停").icon(IconName::Info));
-                }),
-                Err(e) => cx.update(|cx| {
-                    cx.push_notification(Notification::new(e.to_string()).icon(IconName::CircleX));
-                }),
-            }
-            .log_err();
+            utils::handle_qbit_operation(
+                || async move {
+                    client.pause_torrents(&[hash.to_string()]).await?;
+                    Ok(())
+                },
+                "已暂停",
+                &mut cx,
+            )
+            .await;
         })
         .detach();
     }
@@ -551,19 +569,16 @@ impl Download {
                     let arg = AddTorrentArg::builder()
                         .source(TorrentSource::Urls { urls })
                         .build();
-                    match client.add_torrent(arg).await {
-                        Ok(_) => cx.update(|cx| {
-                            cx.push_notification(
-                                Notification::new("添加成功").icon(IconName::Info),
-                            );
-                        }),
-                        Err(e) => cx.update(|cx| {
-                            cx.push_notification(
-                                Notification::new(e.to_string()).icon(IconName::CircleX),
-                            );
-                        }),
-                    }
-                    .log_err();
+
+                    utils::handle_qbit_operation(
+                        || async move {
+                            client.add_torrent(arg).await?;
+                            Ok(())
+                        },
+                        "添加成功",
+                        &mut cx,
+                    )
+                    .await;
                 }
                 Err(e) => cx
                     .update(|cx| {
@@ -608,18 +623,17 @@ impl Download {
         };
         let client = client.clone();
         cx.spawn(|_this, mut cx| async move {
-            match client
-                .delete_torrents(&[hash.to_string()], delete_file)
-                .await
-            {
-                Ok(_) => cx.update(|cx| {
-                    cx.push_notification(Notification::new("已删除").icon(IconName::Info));
-                }),
-                Err(e) => cx.update(|cx| {
-                    cx.push_notification(Notification::new(e.to_string()).icon(IconName::CircleX));
-                }),
-            }
-            .log_err();
+            utils::handle_qbit_operation(
+                || async move {
+                    client
+                        .delete_torrents(&[hash.to_string()], delete_file)
+                        .await?;
+                    Ok(())
+                },
+                "已删除",
+                &mut cx,
+            )
+            .await;
         })
         .detach();
     }
@@ -639,15 +653,15 @@ impl Download {
         };
         let client = client.clone();
         cx.spawn(|_this, mut cx| async move {
-            match client.resume_torrents(&[hash.to_string()]).await {
-                Ok(_) => cx.update(|cx| {
-                    cx.push_notification(Notification::new("已继续").icon(IconName::Info));
-                }),
-                Err(e) => cx.update(|cx| {
-                    cx.push_notification(Notification::new(e.to_string()).icon(IconName::CircleX));
-                }),
-            }
-            .log_err();
+            utils::handle_qbit_operation(
+                || async move {
+                    client.resume_torrents(&[hash.to_string()]).await?;
+                    Ok(())
+                },
+                "已继续",
+                &mut cx,
+            )
+            .await;
         })
         .detach();
     }
@@ -671,6 +685,7 @@ impl Render for Download {
 }
 
 struct Magnet {
+    total: (i64, i64),
     hash: Option<SharedString>,
     icon_state: State,
     state: SharedString,
@@ -684,48 +699,6 @@ struct Magnet {
 }
 
 impl Magnet {
-    fn format_timestamp(stamp: i64) -> SharedString {
-        DateTime::from_timestamp(stamp, 0)
-            .unwrap_or_default()
-            .format("%Y/%m/%d %H:%M:%S")
-            .to_string()
-            .into()
-    }
-
-    fn size_to_string(size: i64) -> String {
-        let mut count = 0;
-        let mut size = size as f64;
-        while size >= 1024.0 {
-            size /= 1024.0;
-            count += 1;
-        }
-
-        let signal = match count {
-            0 => "B",
-            1 => "KB",
-            2 => "MB",
-            3 => "GB",
-            4 => "TB",
-            _ => "PB",
-        };
-
-        if size < 0.01 {
-            format!("0 {signal}")
-        } else {
-            format!("{size:.2} {signal}")
-        }
-    }
-
-    fn human_read_size(size: i64) -> SharedString {
-        Self::size_to_string(size).into()
-    }
-
-    fn human_read_speed(size: i64) -> SharedString {
-        let size = Self::size_to_string(size);
-
-        format!("{size}/s").into()
-    }
-
     fn map_state(state: &State) -> SharedString {
         match state {
             State::Error => "失败",
@@ -781,20 +754,21 @@ impl From<Torrent> for Magnet {
         const UNKNOWN: SharedString = SharedString::new_static("unknown");
         let state = value.state.as_ref().map(Self::map_state).unwrap_or(UNKNOWN);
         let icon_state = value.state.unwrap_or(State::Unknown);
-        let add_on = value
-            .added_on
-            .map(Self::format_timestamp)
-            .unwrap_or(UNKNOWN);
+        let add_on = value.added_on.map(format_timestamp).unwrap_or(UNKNOWN);
         let name = value.name.map(SharedString::from).unwrap_or(UNKNOWN);
-        let size = value.size.map(Self::human_read_size).unwrap_or(UNKNOWN);
+        let size = value.size.map(human_read_size).unwrap_or(UNKNOWN);
         let ratio = value
             .ratio
             .map(|ratio| format!("{ratio:.2}").into())
             .unwrap_or(UNKNOWN);
-        let download = value.dlspeed.map(Self::human_read_speed).unwrap_or(UNKNOWN);
-        let upload = value.upspeed.map(Self::human_read_speed).unwrap_or(UNKNOWN);
+        let download = value.dlspeed.map(human_read_speed).unwrap_or(UNKNOWN);
+        let upload = value.upspeed.map(human_read_speed).unwrap_or(UNKNOWN);
 
         Self {
+            total: (
+                value.dlspeed.unwrap_or_default(),
+                value.upspeed.unwrap_or_default(),
+            ),
             hash: value.hash.map(SharedString::from),
             icon_state,
             state,
@@ -959,3 +933,45 @@ enum CheckEvent {
 }
 
 impl EventEmitter<CheckEvent> for PopupCheck {}
+
+fn size_to_string(size: i64) -> String {
+    let mut count = 0;
+    let mut size = size as f64;
+    while size >= 1024.0 {
+        size /= 1024.0;
+        count += 1;
+    }
+
+    let signal = match count {
+        0 => "B",
+        1 => "KB",
+        2 => "MB",
+        3 => "GB",
+        4 => "TB",
+        _ => "PB",
+    };
+
+    if size < 0.01 {
+        format!("0 {signal}")
+    } else {
+        format!("{size:.2} {signal}")
+    }
+}
+
+fn human_read_size(size: i64) -> SharedString {
+    size_to_string(size).into()
+}
+
+fn human_read_speed(size: i64) -> SharedString {
+    let size = size_to_string(size);
+
+    format!("{size}/s").into()
+}
+
+fn format_timestamp(stamp: i64) -> SharedString {
+    DateTime::from_timestamp(stamp, 0)
+        .unwrap_or_default()
+        .format("%Y/%m/%d %H:%M:%S")
+        .to_string()
+        .into()
+}

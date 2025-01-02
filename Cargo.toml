@@ -1,6 +1,14 @@
 [workspace]
 resolver = "2"
-members = [ "crates/assets","crates/dga", "crates/error", "crates/icons", "crates/magnet", "crates/runtime"]
+members = [
+    "crates/assets",
+    "crates/dga",
+    "crates/error",
+    "crates/icons",
+    "crates/magnet",
+    "crates/runtime",
+    "crates/utils",
+]
 
 [workspace.dependencies]
 assets = { path = "crates/assets" }
@@ -8,6 +16,7 @@ icons = { path = "crates/icons" }
 magnet = { path = "crates/magnet" }
 error = { path = "crates/error" }
 runtime = { path = "crates/runtime" }
+utils = { path = "crates/utils" }
 
 ui = { git = "https://github.com/longbridge/gpui-component" }
 gpui = { git = "https://github.com/huacnlee/zed.git", branch = "export-platform-window" }

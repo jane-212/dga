@@ -1,0 +1,12 @@
+[package]
+name = "utils"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+error.workspace = true
+runtime.workspace = true
+icons.workspace = true
+
+gpui.workspace = true
+ui.workspace = true

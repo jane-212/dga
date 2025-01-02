@@ -5,6 +5,7 @@ use gpui::{
 use icons::IconName;
 use ui::button::{Button, ButtonVariants};
 use ui::input::{InputEvent, TextInput};
+use ui::prelude::FluentBuilder;
 use ui::theme::ActiveTheme;
 use ui::{
     theme::{Theme, ThemeMode},
@@ -211,8 +212,9 @@ impl App {
     fn render_title_start(&self, cx: &mut ViewContext<Self>) -> impl IntoElement {
         div()
             .flex()
-            .justify_end()
+            .justify_start()
             .items_center()
+            .w_1_3()
             .px_2()
             .gap_1()
             .child(
@@ -285,16 +287,16 @@ impl App {
     #[inline]
     fn render_title_middle(&self, cx: &mut ViewContext<Self>) -> impl IntoElement {
         let theme = cx.theme();
+        let base = div().w_1_3();
 
         match self.state {
-            AppState::Home => div()
-                .w(px(200.0))
+            AppState::Home => base
                 .border_1()
                 .border_color(theme.border)
                 .rounded_lg()
                 .child(self.search_input.clone()),
             AppState::Download => match self.download.read(cx).has_login() {
-                true => div()
+                true => base
                     .flex()
                     .justify_center()
                     .items_center()
@@ -332,9 +334,9 @@ impl App {
                             .tooltip("从剪切板添加")
                             .on_click(cx.listener(Self::add_from_clipboard)),
                     ),
-                false => div(),
+                false => base,
             },
-            AppState::License(_) => div(),
+            AppState::License(_) => base,
         }
     }
 
@@ -352,8 +354,29 @@ impl App {
             .flex()
             .justify_end()
             .items_center()
+            .w_1_3()
             .px_2()
             .gap_1()
+            .when(self.download.read(cx).has_login(), |this| {
+                this.child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .text_sm()
+                        .gap_1()
+                        .child(Icon::new(IconName::Download).small())
+                        .child(self.download.read(cx).total_download_speed()),
+                )
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .text_sm()
+                        .gap_1()
+                        .child(Icon::new(IconName::Upload).small())
+                        .child(self.download.read(cx).total_upload_speed()),
+                )
+            })
             .child(
                 Button::new("theme-mode")
                     .icon(Self::theme_icon(cx))

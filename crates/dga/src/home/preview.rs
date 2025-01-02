@@ -12,8 +12,7 @@ use ui::{
     prelude::FluentBuilder, scroll::ScrollbarAxis, theme::ActiveTheme, ContextModal, Sizable,
     StyledExt,
 };
-
-use crate::LogErr;
+use utils::LogErr;
 
 pub struct Preview {
     is_loading: bool,
