@@ -21,7 +21,8 @@ fn main() {
 }
 
 fn window_options(cx: &mut AppContext) -> WindowOptions {
-    let window_bounds = Bounds::centered(None, size(px(1000.0), px(700.0)), cx);
+    let window_size = utils::read_window().unwrap_or(size(px(1000.0), px(700.0)));
+    let window_bounds = Bounds::centered(None, window_size, cx);
 
     WindowOptions {
         window_bounds: Some(WindowBounds::Windowed(window_bounds)),
