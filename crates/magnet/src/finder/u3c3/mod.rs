@@ -180,3 +180,31 @@ impl Finder for U3C3 {
         Ok(Arc::new(preview))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn new_finder() -> U3C3 {
+        U3C3::new(Client::new()).unwrap()
+    }
+
+    #[tokio::test]
+    async fn find() {
+        let finder = new_finder();
+        let list = finder.find("stars-804".into()).await.unwrap();
+        assert!(!list.is_empty());
+    }
+
+    #[tokio::test]
+    async fn preview() {
+        let finder = new_finder();
+        let preview = finder
+            .load_preview(
+                "https://u3c3.com/view?id=73f25941f75cb6f8eebe727ae78a2c0c5dfcdb1a".into(),
+            )
+            .await
+            .unwrap();
+        assert!(!preview.title().is_empty())
+    }
+}

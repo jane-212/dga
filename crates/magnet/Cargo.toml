@@ -12,3 +12,6 @@ async-trait.workspace = true
 gpui.workspace = true
 scraper.workspace = true
 chrono.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true

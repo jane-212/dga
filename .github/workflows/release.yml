@@ -62,6 +62,8 @@ jobs:
           toolchain: ${{ matrix.rust }}
           target: ${{ matrix.target }}
 
+      - uses: Swatinem/rust-cache@v2
+
       - name: Set target variables
         shell: bash
         run: |
@@ -74,16 +76,17 @@ jobs:
           echo "target flag is: ${{ env.TARGET_FLAGS }}"
           echo "target dir is: ${{ env.TARGET_DIR }}"
 
-      - name: Build archive (Windows)
+      - name: Install dependencies
         shell: bash
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get -y install libgtk-3-dev
-          sudo apt-get -y install libsoup-3.0-dev
-          sudo apt-get -y install javascriptcoregtk-4.1-dev
-          sudo apt-get -y install libwebkit2gtk-4.1-dev
-          sudo apt-get -y install libxkbcommon-x11-dev
+          sudo apt-get -y install \
+            libgtk-3-dev \
+            libsoup-3.0-dev \
+            javascriptcoregtk-4.1-dev \
+            libwebkit2gtk-4.1-dev \
+            libxkbcommon-x11-dev
 
       - name: Setup just
         uses: extractions/setup-just@v2
