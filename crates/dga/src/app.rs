@@ -59,6 +59,14 @@ impl App {
     pub fn root(cx: &mut WindowContext) -> View<Root> {
         let app = Self::new(cx);
         cx.subscribe(&app, Self::handle_app_event).detach();
+        cx.on_window_should_close(|cx| {
+            let bounds = cx.bounds();
+            let width = bounds.size.width.0;
+            let height = bounds.size.height.0;
+            utils::write_window(width, height);
+
+            true
+        });
         cx.activate(true);
 
         cx.new_view(|cx| Root::new(app.into(), cx))

@@ -10,3 +10,4 @@ icons.workspace = true
 
 gpui.workspace = true
 ui.workspace = true
+whoami.workspace = true

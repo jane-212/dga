@@ -1,8 +1,11 @@
+use std::fs;
+use std::future::Future;
+use std::path::PathBuf;
+
 use error::Error;
-use gpui::AsyncWindowContext;
+use gpui::{px, size, AsyncWindowContext, Pixels, Size};
 use icons::IconName;
 use runtime::RUNTIME;
-use std::future::Future;
 use ui::{notification::Notification, ContextModal};
 
 pub async fn handle_qbit_operation<F, Fut>(
@@ -51,4 +54,41 @@ impl<E: 'static + std::fmt::Debug> LogErr<E> for std::result::Result<(), E> {
             eprintln!("{e:?}");
         }
     }
+}
+
+fn data_dir() -> PathBuf {
+    let username = whoami::username();
+    #[cfg(target_os = "macos")]
+    let user_dir = PathBuf::from("/Users").join(username);
+    #[cfg(target_os = "linux")]
+    let user_dir = PathBuf::from("/home").join(username);
+    #[cfg(target_os = "windows")]
+    let user_dir = PathBuf::from("C:\\Users").join(username);
+
+    user_dir.join(".cache").join("github.jane-212.dga")
+}
+
+pub fn read_window() -> Option<Size<Pixels>> {
+    let window_file = data_dir().join("window");
+    match fs::read_to_string(window_file) {
+        Ok(content) => {
+            let mut lines = content.lines();
+            let width = lines.next().and_then(|line| line.parse().ok());
+            let height = lines.next().and_then(|line| line.parse().ok());
+
+            match (width, height) {
+                (Some(width), Some(height)) => Some(size(px(width), px(height))),
+                _ => None,
+            }
+        }
+        Err(_) => None,
+    }
+}
+
+pub fn write_window(width: f32, height: f32) {
+    let data_dir = data_dir();
+    if !data_dir.exists() {
+        fs::create_dir_all(&data_dir).log_err();
+    }
+    fs::write(data_dir.join("window"), format!("{width}\n{height}\n")).log_err();
 }
