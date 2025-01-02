@@ -365,26 +365,29 @@ impl App {
             .w_1_3()
             .px_2()
             .gap_1()
-            .when(self.download.read(cx).has_login(), |this| {
-                this.child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .text_sm()
-                        .gap_1()
-                        .child(Icon::new(IconName::Download).small())
-                        .child(self.download.read(cx).total_download_speed()),
-                )
-                .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .text_sm()
-                        .gap_1()
-                        .child(Icon::new(IconName::Upload).small())
-                        .child(self.download.read(cx).total_upload_speed()),
-                )
-            })
+            .when(
+                matches!(self.state, AppState::Download) && self.download.read(cx).has_login(),
+                |this| {
+                    this.child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .text_sm()
+                            .gap_1()
+                            .child(Icon::new(IconName::Download).small())
+                            .child(self.download.read(cx).total_download_speed()),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .text_sm()
+                            .gap_1()
+                            .child(Icon::new(IconName::Upload).small())
+                            .child(self.download.read(cx).total_upload_speed()),
+                    )
+                },
+            )
             .child(
                 Button::new("theme-mode")
                     .icon(Self::theme_icon(cx))
