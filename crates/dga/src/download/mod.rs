@@ -460,7 +460,7 @@ impl Download {
                             )
                             .child(
                                 Button::new(("delete", idx))
-                                    .icon(IconName::CircleX)
+                                    .icon(IconName::Trash2)
                                     .small()
                                     .tooltip("删除")
                                     .on_click(cx.listener({
