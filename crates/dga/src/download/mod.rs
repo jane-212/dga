@@ -344,11 +344,10 @@ impl Download {
         let total_upload_speed = human_read_speed(total_upload_speed);
         cx.update(|cx| {
             this.update(cx, |this, cx| {
-                let count = magnets.len();
                 this.total_speed = (total_download_speed, total_upload_speed);
                 this.magnets = magnets;
                 let offset = this.list_state.logical_scroll_top();
-                this.list_state.reset(count + 1);
+                this.list_state.reset(this.magnets.len() + 1);
                 this.list_state.scroll_to(offset);
                 cx.notify();
             })
@@ -476,6 +475,8 @@ impl Download {
             .flex()
             .items_center()
             .py_2()
+            .h_20()
+            .overflow_hidden()
             .bg(theme.secondary)
             .border_t_1()
             .border_color(theme.border)
