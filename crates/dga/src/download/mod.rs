@@ -318,7 +318,9 @@ impl Download {
                     _ => break,
                 }
 
-                cx.background_executor().timer(Duration::from_secs(1)).await;
+                cx.background_executor()
+                    .timer(Duration::from_millis(1_500))
+                    .await;
             }
         })
         .detach();
