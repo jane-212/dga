@@ -54,19 +54,30 @@ impl EventEmitter<DownloadEvent> for Download {}
 impl Download {
     pub fn new(cx: &mut WindowContext) -> View<Self> {
         let download = cx.new_view(|cx| {
+            let (host, username, password) = utils::read_login_info();
             let host = cx.new_view(|cx| {
-                TextInput::new(cx)
+                let mut input = TextInput::new(cx)
                     .placeholder("地址")
                     .appearance(false)
                     .small()
-                    .prefix(|_cx| div().pl_2().child(Icon::new(IconName::Globe).small()))
+                    .prefix(|_cx| div().pl_2().child(Icon::new(IconName::Globe).small()));
+                if let Some(host) = host {
+                    input.set_text(host, cx);
+                }
+
+                input
             });
             let username = cx.new_view(|cx| {
-                TextInput::new(cx)
+                let mut input = TextInput::new(cx)
                     .placeholder("用户名")
                     .appearance(false)
                     .small()
-                    .prefix(|_cx| div().pl_2().child(Icon::new(IconName::User).small()))
+                    .prefix(|_cx| div().pl_2().child(Icon::new(IconName::User).small()));
+                if let Some(username) = username {
+                    input.set_text(username, cx);
+                }
+
+                input
             });
             let password = cx.new_view(|cx| {
                 let mut input = TextInput::new(cx)
@@ -75,6 +86,9 @@ impl Download {
                     .small()
                     .prefix(|_cx| div().pl_2().child(Icon::new(IconName::Lock).small()));
                 input.set_masked(true, cx);
+                if let Some(password) = password {
+                    input.set_text(password, cx);
+                }
 
                 input
             });
@@ -82,6 +96,14 @@ impl Download {
             cx.subscribe(&popup_check, |this: &mut Self, _delete_check, event, cx| {
                 let CheckEvent::Confirm(hash, delete_file) = event;
                 this.delete_one(hash.clone(), *delete_file, cx);
+            })
+            .detach();
+            cx.on_release(|this, _window_handle, cx| {
+                let host = this.host.read(cx).text();
+                let username = this.username.read(cx).text();
+                let password = this.password.read(cx).text();
+
+                utils::write_login_info(host, username, password);
             })
             .detach();
 

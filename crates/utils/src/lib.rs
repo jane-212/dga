@@ -3,7 +3,7 @@ use std::future::Future;
 use std::path::PathBuf;
 
 use error::Error;
-use gpui::{px, size, AsyncWindowContext, Pixels, Size};
+use gpui::{px, size, AsyncWindowContext, Pixels, SharedString, Size};
 use icons::IconName;
 use runtime::RUNTIME;
 use ui::{notification::Notification, ContextModal};
@@ -91,4 +91,35 @@ pub fn write_window(width: f32, height: f32) {
         fs::create_dir_all(&data_dir).log_err();
     }
     fs::write(data_dir.join("window"), format!("{width}\n{height}\n")).log_err();
+}
+
+pub fn read_login_info() -> (
+    Option<SharedString>,
+    Option<SharedString>,
+    Option<SharedString>,
+) {
+    let window_file = data_dir().join("login");
+    match fs::read_to_string(window_file) {
+        Ok(content) => {
+            let mut lines = content.lines();
+            let host = lines.next().map(String::from).map(SharedString::from);
+            let username = lines.next().map(String::from).map(SharedString::from);
+            let password = lines.next().map(String::from).map(SharedString::from);
+
+            (host, username, password)
+        }
+        Err(_) => (None, None, None),
+    }
+}
+
+pub fn write_login_info(host: SharedString, username: SharedString, password: SharedString) {
+    let data_dir = data_dir();
+    if !data_dir.exists() {
+        fs::create_dir_all(&data_dir).log_err();
+    }
+    fs::write(
+        data_dir.join("login"),
+        format!("{host}\n{username}\n{password}\n"),
+    )
+    .log_err();
 }
