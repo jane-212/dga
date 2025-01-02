@@ -422,12 +422,7 @@ impl Download {
                             .child(Icon::new(magnet.icon()).small())
                             .w_8(),
                     )
-                    .child(
-                        Label::new(magnet.name.clone())
-                            .text_ellipsis()
-                            .pr_1()
-                            .w(width),
-                    )
+                    .child(Label::new(magnet.name.clone()).pr_1().w(width))
                     .child(Label::new(magnet.state.clone()).pl_1().pr_1().w_24())
                     .child(
                         div()
