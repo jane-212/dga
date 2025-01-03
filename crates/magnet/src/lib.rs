@@ -177,7 +177,6 @@ impl Date {
         let format = format.as_ref();
         let date = NaiveDateTime::parse_from_str(date, format)
             .map(Self::convert_date_time_to_local)
-            .ok()
             .unwrap_or_default();
 
         Self::new(date)
