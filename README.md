@@ -27,3 +27,13 @@
 > 软件未对`Windows`和`Linux`进行测试
 
 [点击](https://github.com/jane-212/dga/releases)下载对应平台的文件
+
+## Q&A
+
+`macos` 平台运行报错文件损坏
+
+可以在终端中输入以下命令,将 `/path/to/Dga.app` 替换为你的 `Dga.app` 路径
+
+```shell
+xattr -cr /path/to/Dga.app
+```
