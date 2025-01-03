@@ -83,7 +83,7 @@ impl Home {
         &self,
         url: Arc<dyn Previewable>,
         cx: &mut ViewContext<Self>,
-    ) -> Task<Result<Arc<dyn FoundPreview>>> {
+    ) -> Task<Result<Box<dyn FoundPreview>>> {
         let magnet = self.magnet.clone();
         cx.background_executor()
             .spawn(async move { magnet.preview(url).await })

@@ -60,7 +60,7 @@ impl Magnet {
             .await?
     }
 
-    pub async fn preview(&self, url: Arc<dyn Previewable>) -> Result<Arc<dyn FoundPreview>> {
+    pub async fn preview(&self, url: Arc<dyn Previewable>) -> Result<Box<dyn FoundPreview>> {
         let (id, url) = url.preview_url();
         match self.finders.get(&id) {
             Some(finder) => {
@@ -87,10 +87,14 @@ pub trait Previewable: Send + Sync + 'static {
 
 pub trait FoundPreview: Send + Sync {
     fn title(&self) -> SharedString;
+    fn bounds(&self) -> Vec<Arc<dyn Bound>>;
+    fn images(&self) -> Vec<SharedString>;
+}
+
+pub trait Bound: Send + Sync {
     fn size(&self) -> &Size;
     fn date(&self) -> &Date;
     fn magnet(&self) -> SharedString;
-    fn images(&self) -> Vec<SharedString>;
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]

@@ -13,7 +13,7 @@ use crate::{FoundItem, FoundPreview};
 #[async_trait]
 pub trait Finder: Send + Sync {
     async fn find(&self, key: SharedString) -> Result<Vec<Box<dyn FoundItem>>>;
-    async fn load_preview(&self, url: SharedString) -> Result<Arc<dyn FoundPreview>>;
+    async fn load_preview(&self, url: SharedString) -> Result<Box<dyn FoundPreview>>;
 }
 
 fn cast(u3c3: U3C3) -> Arc<dyn Finder> {

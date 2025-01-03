@@ -6,7 +6,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use gpui::SharedString;
-use item::{Item, Preview};
+use item::{Data, Item, Preview};
 use reqwest::Client;
 use scraper::Html;
 use selectors::{HomeSelectors, PreviewSelectors};
@@ -126,7 +126,7 @@ impl Finder for U3C3 {
         Ok(items)
     }
 
-    async fn load_preview(&self, url: SharedString) -> Result<Arc<dyn FoundPreview>> {
+    async fn load_preview(&self, url: SharedString) -> Result<Box<dyn FoundPreview>> {
         let text = self
             .client
             .get(url.to_string())
@@ -169,15 +169,13 @@ impl Finder for U3C3 {
             .iter()
             .map(|item| item.into())
             .collect();
-        let preview = Preview::new(
-            title,
-            Self::parse_size(size),
-            Self::parse_date(date),
-            magnet,
-            images,
-        );
 
-        Ok(Arc::new(preview))
+        let size = Self::parse_size(size);
+        let date = Self::parse_date(date);
+        let data = Data::new(size, date, magnet);
+        let preview = Preview::new(title, vec![Arc::new(data)], images);
+
+        Ok(Box::new(preview))
     }
 }
 

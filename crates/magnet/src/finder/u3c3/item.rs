@@ -4,13 +4,13 @@ use std::sync::Arc;
 use gpui::SharedString;
 
 use super::U3C3;
-use crate::{Date, FoundItem, FoundPreview, Previewable, Size};
+use crate::{Bound, Date, FoundItem, FoundPreview, Previewable, Size};
 
 pub struct Item {
-    pub title: SharedString,
-    pub size: Size,
-    pub date: Date,
-    pub preview: Url,
+    title: SharedString,
+    size: Size,
+    date: Date,
+    preview: Url,
 }
 
 impl Item {
@@ -57,36 +57,28 @@ impl Previewable for Url {
 }
 
 pub struct Preview {
-    pub title: SharedString,
-    pub size: Size,
-    pub date: Date,
-    pub magnet: SharedString,
-    pub images: Vec<SharedString>,
+    title: SharedString,
+    bounds: Vec<Arc<dyn Bound>>,
+    images: Vec<SharedString>,
 }
 
-impl Preview {
-    pub fn new(
-        title: impl Into<SharedString>,
-        size: Size,
-        date: Date,
-        magnet: impl Into<SharedString>,
-        images: Vec<SharedString>,
-    ) -> Self {
+pub struct Data {
+    size: Size,
+    date: Date,
+    magnet: SharedString,
+}
+
+impl Data {
+    pub fn new(size: Size, date: Date, magnet: impl Into<SharedString>) -> Self {
         Self {
-            title: title.into(),
             size,
             date,
             magnet: magnet.into(),
-            images,
         }
     }
 }
 
-impl FoundPreview for Preview {
-    fn title(&self) -> SharedString {
-        self.title.clone()
-    }
-
+impl Bound for Data {
     fn size(&self) -> &Size {
         &self.size
     }
@@ -98,8 +90,32 @@ impl FoundPreview for Preview {
     fn magnet(&self) -> SharedString {
         self.magnet.clone()
     }
+}
+
+impl Preview {
+    pub fn new(
+        title: impl Into<SharedString>,
+        bounds: Vec<Arc<dyn Bound>>,
+        images: Vec<SharedString>,
+    ) -> Self {
+        Self {
+            title: title.into(),
+            bounds,
+            images,
+        }
+    }
+}
+
+impl FoundPreview for Preview {
+    fn title(&self) -> SharedString {
+        self.title.clone()
+    }
 
     fn images(&self) -> Vec<SharedString> {
         self.images.clone()
+    }
+
+    fn bounds(&self) -> Vec<Arc<dyn Bound>> {
+        self.bounds.clone()
     }
 }
