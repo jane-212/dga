@@ -1,11 +1,11 @@
 mod finder;
 
+use std::any::TypeId;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use std::{any::TypeId, cmp::Ordering};
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
 use error::{Error, Result};
 use finder::Finder;
 use gpui::SharedString;
@@ -51,10 +51,7 @@ impl Magnet {
                     items.extend(new_items);
                 }
 
-                items.sort_by(|a, b| match b.date().cmp(a.date()) {
-                    Ordering::Equal => b.size().cmp(a.size()),
-                    ori => ori,
-                });
+                items.sort_by(|a, b| b.date().cmp(a.date()));
                 Ok(items)
             })
             .await?
@@ -76,9 +73,10 @@ impl Magnet {
 
 pub trait FoundItem: Send + Sync {
     fn title(&self) -> SharedString;
-    fn size(&self) -> &Size;
     fn date(&self) -> &Date;
     fn url(&self) -> Arc<dyn Previewable>;
+    fn first(&self) -> SharedString;
+    fn last(&self) -> SharedString;
 }
 
 pub trait Previewable: Send + Sync + 'static {
@@ -134,13 +132,13 @@ impl Size {
             _ => "PB",
         };
 
-        format!("{:.2}{}", size, signal).into()
+        format!("{:.2} {}", size, signal).into()
     }
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub struct Date {
-    date_time: DateTime<Utc>,
+    date_time: DateTime<Local>,
     format: SharedString,
 }
 
@@ -151,14 +149,41 @@ impl From<&Date> for SharedString {
 }
 
 impl Date {
-    pub fn new(date_time: DateTime<Utc>) -> Self {
+    fn new(date_time: DateTime<Local>) -> Self {
         Self {
             date_time,
             format: Self::to_format(date_time),
         }
     }
 
-    fn to_format(date_time: DateTime<Utc>) -> SharedString {
+    fn parse_date(date: impl AsRef<str>, format: impl AsRef<str>) -> Self {
+        let date = date.as_ref();
+        let format = format.as_ref();
+
+        let date = NaiveDate::parse_from_str(date, format)
+            .map(|date| date.and_time(NaiveTime::MIN))
+            .map(Self::convert_date_time_to_local)
+            .unwrap_or_default();
+
+        Self::new(date)
+    }
+
+    fn convert_date_time_to_local(date_time: NaiveDateTime) -> DateTime<Local> {
+        Local.from_utc_datetime(&date_time)
+    }
+
+    fn parse_date_time(date: impl AsRef<str>, format: impl AsRef<str>) -> Self {
+        let date = date.as_ref();
+        let format = format.as_ref();
+        let date = NaiveDateTime::parse_from_str(date, format)
+            .map(Self::convert_date_time_to_local)
+            .ok()
+            .unwrap_or_default();
+
+        Self::new(date)
+    }
+
+    fn to_format(date_time: DateTime<Local>) -> SharedString {
         date_time.format("%Y-%m-%d %H:%M:%S").to_string().into()
     }
 }

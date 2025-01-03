@@ -3,12 +3,12 @@ use std::sync::Arc;
 
 use gpui::SharedString;
 
-use super::U3C3;
+use super::Javdb;
 use crate::{Bound, Date, FoundItem, FoundPreview, Previewable, Size};
 
 pub struct Item {
     title: SharedString,
-    size: Size,
+    id: SharedString,
     date: Date,
     preview: Url,
 }
@@ -16,13 +16,13 @@ pub struct Item {
 impl Item {
     pub fn new(
         title: impl Into<SharedString>,
-        size: Size,
+        id: impl Into<SharedString>,
         date: Date,
         preview: impl Into<SharedString>,
     ) -> Self {
         Self {
             title: title.into(),
-            size,
+            id: id.into(),
             date,
             preview: Url(preview.into()),
         }
@@ -38,16 +38,16 @@ impl FoundItem for Item {
         self.title.clone()
     }
 
-    fn date(&self) -> &Date {
-        &self.date
-    }
-
     fn first(&self) -> SharedString {
-        self.size.format.clone()
+        self.id.clone()
     }
 
     fn last(&self) -> SharedString {
         self.date.format.clone()
+    }
+
+    fn date(&self) -> &Date {
+        &self.date
     }
 }
 
@@ -56,7 +56,7 @@ pub struct Url(SharedString);
 
 impl Previewable for Url {
     fn preview_url(&self) -> (TypeId, SharedString) {
-        (TypeId::of::<U3C3>(), self.0.clone())
+        (TypeId::of::<Javdb>(), self.0.clone())
     }
 }
 
