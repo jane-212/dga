@@ -246,6 +246,8 @@ impl Download {
     pub fn logout(&mut self, cx: &mut ViewContext<Self>) {
         self.client = None;
         self.magnets.clear();
+        self.list_state.reset(0);
+        self.total_speed = ("0 B/s".into(), "0 B/s".into());
         cx.notify();
     }
 
