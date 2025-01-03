@@ -78,7 +78,6 @@ impl Home {
         is_loading
     }
 
-    #[inline]
     fn preview_task(
         &self,
         url: Arc<dyn Previewable>,
@@ -113,12 +112,10 @@ impl Home {
         .detach();
     }
 
-    #[inline]
     fn notify_too_quick(cx: &mut ViewContext<Self>) {
         cx.push_notification(Notification::new("太快啦").icon(IconName::Info));
     }
 
-    #[inline]
     fn notify_error<T: 'static>(error: String, cx: &mut ViewContext<T>) {
         cx.push_notification(Notification::new(error).icon(IconName::CircleX));
     }
@@ -140,7 +137,6 @@ impl Home {
         is_loading
     }
 
-    #[inline]
     fn search_task(
         &self,
         key: SharedString,

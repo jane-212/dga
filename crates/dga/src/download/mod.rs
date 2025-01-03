@@ -253,7 +253,6 @@ impl Download {
         self.client.is_some()
     }
 
-    #[inline]
     fn render_login(&self, cx: &mut ViewContext<Self>) -> impl IntoElement {
         let theme = cx.theme();
 
@@ -298,7 +297,6 @@ impl Download {
             )
     }
 
-    #[inline]
     fn handle_login(&mut self, _event: &ClickEvent, cx: &mut ViewContext<Self>) {
         cx.stop_propagation();
         self.is_login = true;
@@ -550,14 +548,12 @@ impl Download {
 
     const OTHER_WIDTH: Pixels = px(32. + 96. * 3. + 80. + 64. + 165. + 105. * 2.);
 
-    #[inline]
     fn render_list(&self, _cx: &mut ViewContext<Self>) -> impl IntoElement {
         div()
             .size_full()
             .child(list(self.list_state.clone()).size_full())
     }
 
-    #[inline]
     fn pause_one(
         &mut self,
         hash: Option<SharedString>,
@@ -585,7 +581,6 @@ impl Download {
         .detach();
     }
 
-    #[inline]
     fn delete_check(
         &mut self,
         name: SharedString,
@@ -599,7 +594,6 @@ impl Download {
         });
     }
 
-    #[inline]
     fn add_torrent(&mut self, new: String, cx: &mut ViewContext<Self>) {
         let Some(ref client) = self.client else {
             cx.push_notification(Notification::new("请先登录").icon(IconName::Info));
@@ -635,12 +629,10 @@ impl Download {
         .detach();
     }
 
-    #[inline]
     fn add_new(&mut self, new: SharedString, cx: &mut ViewContext<Self>) {
         self.add_torrent(new.to_string(), cx);
     }
 
-    #[inline]
     fn add_from_clipboard(&mut self, cx: &mut ViewContext<Self>) {
         let Some(new) = cx
             .read_from_clipboard()
@@ -651,7 +643,6 @@ impl Download {
         self.add_torrent(new, cx);
     }
 
-    #[inline]
     fn delete_one(
         &mut self,
         hash: Option<SharedString>,
@@ -681,7 +672,6 @@ impl Download {
         .detach();
     }
 
-    #[inline]
     fn resume_one(
         &mut self,
         hash: Option<SharedString>,
@@ -709,7 +699,6 @@ impl Download {
         .detach();
     }
 
-    #[inline]
     fn render_main(&self, cx: &mut ViewContext<Self>) -> impl IntoElement {
         let base = div().size_full().flex().justify_center().items_center();
 

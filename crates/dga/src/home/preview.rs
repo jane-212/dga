@@ -139,17 +139,14 @@ impl Preview {
         }
     }
 
-    #[inline]
     pub fn is_loading(&self) -> bool {
         self.is_loading
     }
 
-    #[inline]
     pub fn load(&mut self) {
         self.is_loading = true;
     }
 
-    #[inline]
     pub fn loaded(&mut self, preview: Box<dyn FoundPreview>) {
         self.is_loading = false;
         self.load_items_from_preview(preview);
