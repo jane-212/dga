@@ -45,17 +45,14 @@ impl Search {
         })
     }
 
-    #[inline]
     pub fn is_loading(&self) -> bool {
         self.is_loading
     }
 
-    #[inline]
     pub fn load(&mut self) {
         self.is_loading = true;
     }
 
-    #[inline]
     pub fn loaded(&mut self, new_items: Vec<Box<dyn FoundItem>>) {
         self.is_loading = false;
         self.items = new_items;
@@ -63,12 +60,10 @@ impl Search {
         self.selected_item = None;
     }
 
-    #[inline]
     pub fn load_error(&mut self) {
         self.is_loading = false;
     }
 
-    #[inline]
     fn load_preview(
         &mut self,
         selected_item: Option<usize>,
@@ -143,14 +138,12 @@ impl Search {
             )
     }
 
-    #[inline]
     fn render_items(&self, _cx: &mut ViewContext<Self>) -> impl IntoElement {
         div()
             .size_full()
             .child(list(self.list_state.clone()).size_full())
     }
 
-    #[inline]
     fn render_loading() -> impl IntoElement {
         div()
             .size_full()
@@ -160,7 +153,6 @@ impl Search {
             .child(Indicator::new().icon(IconName::Loader).large())
     }
 
-    #[inline]
     fn render_content(&self, cx: &mut ViewContext<Self>) -> AnyElement {
         match self.is_loading {
             true => Self::render_loading().into_any_element(),

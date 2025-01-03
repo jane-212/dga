@@ -157,7 +157,6 @@ impl App {
         })
     }
 
-    #[inline]
     fn search(&mut self, input: View<TextInput>, cx: &mut ViewContext<Self>) {
         let text = input.read(cx).text();
         if text.is_empty() {
@@ -167,14 +166,12 @@ impl App {
         cx.emit(AppEvent::Search(text));
     }
 
-    #[inline]
     fn clear_input(input: View<TextInput>, cx: &mut ViewContext<Self>) {
         input.update(cx, |input, cx| {
             input.set_text("", cx);
         });
     }
 
-    #[inline]
     fn change_color_mode(_event: &ClickEvent, cx: &mut WindowContext) {
         cx.stop_propagation();
 
@@ -185,13 +182,11 @@ impl App {
         Theme::change(mode, cx);
     }
 
-    #[inline]
     fn open_home_page(_event: &ClickEvent, cx: &mut WindowContext) {
         cx.stop_propagation();
         cx.open_url("https://github.com/jane-212/dga");
     }
 
-    #[inline]
     fn switch_license(&mut self, _event: &ClickEvent, cx: &mut ViewContext<Self>) {
         cx.stop_propagation();
         match self.state {
@@ -203,7 +198,6 @@ impl App {
         }
     }
 
-    #[inline]
     fn render_main(&mut self, cx: &mut ViewContext<Self>) -> impl IntoElement {
         let total_height = cx.viewport_size().height;
         let height = total_height - TITLE_BAR_HEIGHT;
@@ -216,7 +210,6 @@ impl App {
         }
     }
 
-    #[inline]
     fn render_title_start(&self, cx: &mut ViewContext<Self>) -> impl IntoElement {
         div()
             .flex()
@@ -245,54 +238,46 @@ impl App {
             )
     }
 
-    #[inline]
     fn set_to_home(&mut self, _event: &ClickEvent, cx: &mut ViewContext<Self>) {
         cx.stop_propagation();
         cx.emit(AppEvent::ChangeTo(AppState::Home));
     }
 
-    #[inline]
     fn set_to_download(&mut self, _event: &ClickEvent, cx: &mut ViewContext<Self>) {
         cx.stop_propagation();
         cx.emit(AppEvent::ChangeTo(AppState::Download));
     }
 
-    #[inline]
     fn logout_download(&mut self, _event: &ClickEvent, cx: &mut ViewContext<Self>) {
         self.download.update(cx, |this, cx| {
             this.logout(cx);
         });
     }
 
-    #[inline]
     fn pause_all(&mut self, _event: &ClickEvent, cx: &mut ViewContext<Self>) {
         self.download.update(cx, |_this, cx| {
             cx.emit(DownloadEvent::PauseAll);
         })
     }
 
-    #[inline]
     fn resume_all(&mut self, _event: &ClickEvent, cx: &mut ViewContext<Self>) {
         self.download.update(cx, |_this, cx| {
             cx.emit(DownloadEvent::ResumeAll);
         })
     }
 
-    #[inline]
     fn add_new(&mut self, new: SharedString, cx: &mut ViewContext<Self>) {
         self.download.update(cx, |_this, cx| {
             cx.emit(DownloadEvent::AddNew(new));
         })
     }
 
-    #[inline]
     fn add_from_clipboard(&mut self, _event: &ClickEvent, cx: &mut ViewContext<Self>) {
         self.download.update(cx, |_this, cx| {
             cx.emit(DownloadEvent::AddFromClipboard);
         })
     }
 
-    #[inline]
     fn render_title_middle(&self, cx: &mut ViewContext<Self>) -> impl IntoElement {
         let theme = cx.theme();
         let base = div().w_1_3();
@@ -348,7 +333,6 @@ impl App {
         }
     }
 
-    #[inline]
     fn theme_icon(cx: &mut ViewContext<Self>) -> IconName {
         match cx.theme().mode {
             ThemeMode::Light => IconName::Sun,
@@ -356,7 +340,6 @@ impl App {
         }
     }
 
-    #[inline]
     fn render_title_end(&self, cx: &mut ViewContext<Self>) -> impl IntoElement {
         div()
             .flex()
@@ -415,7 +398,6 @@ impl App {
             )
     }
 
-    #[inline]
     fn render_title_bar(&mut self, cx: &mut ViewContext<Self>) -> TitleBar {
         let title_start = self.render_title_start(cx);
         let title_middle = self.render_title_middle(cx);
