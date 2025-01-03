@@ -475,7 +475,7 @@ impl Download {
             .flex()
             .items_center()
             .py_2()
-            .h_20()
+            .h_12()
             .overflow_hidden()
             .bg(theme.secondary)
             .border_t_1()
@@ -1005,6 +1005,7 @@ fn human_read_speed(size: i64) -> SharedString {
 fn format_timestamp(stamp: i64) -> SharedString {
     DateTime::from_timestamp(stamp, 0)
         .unwrap_or_default()
+        .naive_local()
         .format("%Y/%m/%d %H:%M:%S")
         .to_string()
         .into()

@@ -116,8 +116,8 @@ impl Search {
                             .flex()
                             .justify_between()
                             .pt_2()
-                            .child(Label::new(item.size()))
-                            .child(Label::new(item.date())),
+                            .child(Label::new(item.first()))
+                            .child(Label::new(item.last())),
                     )
                     .when_some(selected_item, |this, selected| {
                         if selected == ix {

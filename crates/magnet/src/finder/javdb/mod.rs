@@ -10,17 +10,18 @@ use reqwest::Client;
 use scraper::Html;
 use selectors::{HomeSelectors, PreviewSelectors};
 
-use super::{Finder, FoundItem, FoundPreview, Result};
-use crate::{Date, Size};
+use crate::{Bound, Date, Size};
 
-pub struct U3C3 {
+use super::{Finder, FoundItem, FoundPreview, Result};
+
+pub struct Javdb {
     client: Client,
     home_selectors: HomeSelectors,
     preview_selectors: PreviewSelectors,
 }
 
-impl U3C3 {
-    const BASE_URL: &'static str = "https://u3c3.com";
+impl Javdb {
+    const BASE_URL: &'static str = "https://javdb.com";
 
     pub fn new(client: Client) -> Result<Self> {
         Ok(Self {
@@ -58,64 +59,51 @@ impl U3C3 {
 
         Size::new(size)
     }
-
-    fn parse_date(date: String) -> Date {
-        Date::parse_date_time(date, "%Y-%m-%d %H:%M:%S")
-    }
 }
 
 #[async_trait]
-impl Finder for U3C3 {
+impl Finder for Javdb {
     async fn find(&self, key: SharedString) -> Result<Vec<Box<dyn FoundItem>>> {
-        let url = Self::BASE_URL;
-        let search2 = "eelja3lfe1a1".into();
-        let plain_text = self
+        let url = format!("{}/search", Self::BASE_URL);
+        let text = self
             .client
             .get(url)
-            .query(&[("search", key), ("search2", search2)])
+            .query(&[("q", key.to_string().as_str()), ("f", "all")])
             .send()
             .await?
             .text()
             .await?;
-        let html = Html::parse_document(&plain_text);
+        let html = Html::parse_document(&text);
 
-        let mut items = Vec::new();
-        for item in html.select(&self.home_selectors.item).skip(2) {
+        let mut items: Vec<Box<dyn FoundItem>> = Vec::new();
+        for item in html.select(&self.home_selectors.item) {
+            let url = item
+                .select(&self.home_selectors.url)
+                .next()
+                .and_then(|url| {
+                    url.attr("href")
+                        .map(|url| format!("{}{}", Self::BASE_URL, url))
+                })
+                .unwrap_or_default();
             let title = item
                 .select(&self.home_selectors.title)
                 .next()
-                .and_then(|title| title.attr("title").map(String::from))
+                .and_then(|this| this.attr("title").map(String::from))
                 .unwrap_or_default();
-
-            let preview = item
-                .select(&self.home_selectors.title)
+            let id = item
+                .select(&self.home_selectors.id)
                 .next()
-                .and_then(|title| {
-                    title
-                        .attr("href")
-                        .map(|href| format!("{}{}", Self::BASE_URL, href))
-                })
+                .map(|id| id.text().collect::<String>())
                 .unwrap_or_default();
-
-            let size: String = item
-                .select(&self.home_selectors.size)
-                .next()
-                .map(|size| size.text().collect())
-                .unwrap_or_default();
-
-            let date: String = item
+            let date = item
                 .select(&self.home_selectors.date)
                 .next()
-                .map(|date| date.text().collect())
+                .map(|date| date.text().collect::<String>())
                 .unwrap_or_default();
 
-            let new_item = Box::new(Item::new(
-                title,
-                Self::parse_size(size),
-                Self::parse_date(date),
-                preview,
-            ));
-            items.push(new_item as Box<dyn FoundItem>);
+            let date = Date::parse_date(date.trim(), "%Y-%m-%d");
+            let new_item = Box::new(Item::new(title, id, date, url));
+            items.push(new_item);
         }
 
         Ok(items)
@@ -130,47 +118,53 @@ impl Finder for U3C3 {
             .text()
             .await?;
         let html = Html::parse_document(&text);
+
         let title = html
             .select(&self.preview_selectors.title)
             .next()
-            .map(|this| this.text().collect())
-            .map(|this: String| this.trim().to_string())
+            .map(|title| title.text().collect::<String>())
             .unwrap_or_default();
-        let size: String = html
-            .select(&self.preview_selectors.size)
-            .next()
-            .map(|this| this.text().collect())
-            .unwrap_or_default();
-        let date: String = html
-            .select(&self.preview_selectors.date)
-            .next()
-            .map(|this| this.text().collect())
-            .unwrap_or_default();
-        let magnet = html
-            .select(&self.preview_selectors.magnet)
-            .next()
-            .and_then(|this| {
-                this.attr("href")
-                    .and_then(|this| this.find('&').map(|end| this[..end].to_string()))
+        let images = html
+            .select(&self.preview_selectors.samples)
+            .flat_map(|sample| sample.attr("src").map(String::from).map(SharedString::from))
+            .collect::<Vec<_>>();
+        let mut bounds: Vec<_> = html
+            .select(&self.preview_selectors.items)
+            .map(|item| {
+                let date = item
+                    .select(&self.preview_selectors.date)
+                    .next()
+                    .map(|title| title.text().collect::<String>())
+                    .unwrap_or_default();
+                let size = item
+                    .select(&self.preview_selectors.size)
+                    .next()
+                    .map(|value| value.text().collect::<String>())
+                    .unwrap_or_default();
+                let size = size
+                    .split_once(',')
+                    .map(|(size, _)| size.trim().to_string())
+                    .unwrap_or(size.trim().to_string());
+                let size = Self::parse_size(size);
+                let magnet = item
+                    .select(&self.preview_selectors.url)
+                    .next()
+                    .and_then(|url| {
+                        url.attr("href")
+                            .and_then(|href| href.split_once('&').map(|(url, _)| url.to_string()))
+                    })
+                    .unwrap_or_default();
+
+                Arc::new(Data::new(
+                    size,
+                    Date::parse_date(date.trim(), "%Y-%m-%d"),
+                    magnet,
+                )) as Arc<dyn Bound>
             })
-            .unwrap_or_default();
-        let images: Vec<SharedString> = html
-            .select(&self.preview_selectors.images)
-            .next()
-            .and_then(|this| {
-                this.attr("src")
-                    .map(|this| format!("{}{}", Self::BASE_URL, this))
-            })
-            .iter()
-            .map(|item| item.into())
             .collect();
+        bounds.sort_by(|a, b| b.date().cmp(a.date()));
 
-        let size = Self::parse_size(size);
-        let date = Self::parse_date(date);
-        let data = Data::new(size, date, magnet);
-        let preview = Preview::new(title, vec![Arc::new(data)], images);
-
-        Ok(Box::new(preview))
+        Ok(Box::new(Preview::new(title, bounds, images)))
     }
 }
 
@@ -178,8 +172,8 @@ impl Finder for U3C3 {
 mod tests {
     use super::*;
 
-    fn new_finder() -> U3C3 {
-        U3C3::new(Client::new()).unwrap()
+    fn new_finder() -> Javdb {
+        Javdb::new(Client::new()).unwrap()
     }
 
     #[tokio::test]
@@ -193,9 +187,7 @@ mod tests {
     async fn preview() {
         let finder = new_finder();
         let preview = finder
-            .load_preview(
-                "https://u3c3.com/view?id=73f25941f75cb6f8eebe727ae78a2c0c5dfcdb1a".into(),
-            )
+            .load_preview("https://javdb.com/v/qDYQzM".into())
             .await
             .unwrap();
         assert!(!preview.title().is_empty());

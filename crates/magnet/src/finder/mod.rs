@@ -1,9 +1,11 @@
+mod javdb;
 mod u3c3;
 
 use std::{any::TypeId, collections::HashMap, sync::Arc};
 
 use async_trait::async_trait;
 use gpui::SharedString;
+use javdb::Javdb;
 use reqwest::Client;
 use u3c3::U3C3;
 
@@ -16,14 +18,14 @@ pub trait Finder: Send + Sync {
     async fn load_preview(&self, url: SharedString) -> Result<Box<dyn FoundPreview>>;
 }
 
-fn cast(u3c3: U3C3) -> Arc<dyn Finder> {
-    Arc::new(u3c3)
-}
-
 pub fn all_finders(client: Client) -> Result<HashMap<TypeId, Arc<dyn Finder>>> {
     let mut finders = HashMap::new();
+
     let u3c3 = U3C3::new(client.clone())?;
-    finders.insert(TypeId::of::<U3C3>(), cast(u3c3));
+    finders.insert(TypeId::of::<U3C3>(), Arc::new(u3c3) as Arc<dyn Finder>);
+
+    let javdb = Javdb::new(client.clone())?;
+    finders.insert(TypeId::of::<Javdb>(), Arc::new(javdb));
 
     Ok(finders)
 }
