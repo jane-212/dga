@@ -102,7 +102,15 @@ impl App {
                 .placeholder("搜索")
                 .appearance(false)
                 .xsmall()
-                .prefix(|_cx| div().pl_2().child(Icon::new(IconName::Search).small()))
+                .prefix(|cx| {
+                    let theme = cx.theme();
+
+                    div().pl_2().child(
+                        Icon::new(IconName::Search)
+                            .text_color(theme.primary)
+                            .small(),
+                    )
+                })
         });
         cx.subscribe(&input, |this: &mut Self, input, event, cx| {
             if let InputEvent::PressEnter = event {
@@ -211,6 +219,8 @@ impl App {
     }
 
     fn render_title_start(&self, cx: &mut ViewContext<Self>) -> impl IntoElement {
+        let theme = cx.theme();
+
         div()
             .flex()
             .justify_start()
@@ -220,7 +230,7 @@ impl App {
             .gap_1()
             .child(
                 Button::new("home")
-                    .icon(IconName::House)
+                    .icon(Icon::new(IconName::House).text_color(theme.primary))
                     .ghost()
                     .small()
                     .tooltip("首页")
@@ -229,7 +239,7 @@ impl App {
             )
             .child(
                 Button::new("download")
-                    .icon(IconName::HardDriveDownload)
+                    .icon(Icon::new(IconName::HardDriveDownload).text_color(theme.primary))
                     .ghost()
                     .small()
                     .tooltip("下载")
@@ -297,7 +307,7 @@ impl App {
                     .gap_1()
                     .child(
                         Button::new("logout")
-                            .icon(IconName::LogOut)
+                            .icon(Icon::new(IconName::LogOut).text_color(ui::red_400()))
                             .ghost()
                             .small()
                             .tooltip("退出登录")
@@ -305,7 +315,7 @@ impl App {
                     )
                     .child(
                         Button::new("pause-all")
-                            .icon(IconName::CirclePause)
+                            .icon(Icon::new(IconName::CirclePause).text_color(theme.primary))
                             .ghost()
                             .small()
                             .tooltip("全部暂停")
@@ -313,7 +323,7 @@ impl App {
                     )
                     .child(
                         Button::new("resume-all")
-                            .icon(IconName::FastForward)
+                            .icon(Icon::new(IconName::FastForward).text_color(theme.primary))
                             .ghost()
                             .small()
                             .tooltip("全部开始")
@@ -321,7 +331,7 @@ impl App {
                     )
                     .child(
                         Button::new("add-new")
-                            .icon(IconName::ClipboardPlus)
+                            .icon(Icon::new(IconName::ClipboardPlus).text_color(theme.primary))
                             .ghost()
                             .small()
                             .tooltip("从剪切板添加")
@@ -333,14 +343,16 @@ impl App {
         }
     }
 
-    fn theme_icon(cx: &mut ViewContext<Self>) -> IconName {
-        match cx.theme().mode {
+    fn theme_icon(theme: &Theme) -> IconName {
+        match theme.mode {
             ThemeMode::Light => IconName::Sun,
             ThemeMode::Dark => IconName::Moon,
         }
     }
 
     fn render_title_end(&self, cx: &mut ViewContext<Self>) -> impl IntoElement {
+        let theme = cx.theme();
+
         div()
             .flex()
             .justify_end()
@@ -357,7 +369,11 @@ impl App {
                             .items_center()
                             .text_sm()
                             .gap_1()
-                            .child(Icon::new(IconName::Download).small())
+                            .child(
+                                Icon::new(IconName::Download)
+                                    .text_color(theme.primary)
+                                    .small(),
+                            )
                             .child(self.download.read(cx).total_download_speed()),
                     )
                     .child(
@@ -366,14 +382,18 @@ impl App {
                             .items_center()
                             .text_sm()
                             .gap_1()
-                            .child(Icon::new(IconName::Upload).small())
+                            .child(
+                                Icon::new(IconName::Upload)
+                                    .text_color(theme.primary)
+                                    .small(),
+                            )
                             .child(self.download.read(cx).total_upload_speed()),
                     )
                 },
             )
             .child(
                 Button::new("theme-mode")
-                    .icon(Self::theme_icon(cx))
+                    .icon(Icon::new(Self::theme_icon(theme)).text_color(theme.primary))
                     .ghost()
                     .small()
                     .tooltip("主题")
@@ -381,7 +401,7 @@ impl App {
             )
             .child(
                 Button::new("license")
-                    .icon(IconName::CopyRight)
+                    .icon(Icon::new(IconName::CopyRight).text_color(theme.primary))
                     .ghost()
                     .small()
                     .tooltip("开源协议")
@@ -390,7 +410,7 @@ impl App {
             )
             .child(
                 Button::new("github")
-                    .icon(IconName::Github)
+                    .icon(Icon::new(IconName::Github).text_color(theme.primary))
                     .ghost()
                     .small()
                     .tooltip("打开主页")

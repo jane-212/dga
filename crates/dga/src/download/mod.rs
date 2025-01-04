@@ -23,7 +23,7 @@ use ui::{
     notification::Notification,
     prelude::FluentBuilder,
     theme::ActiveTheme,
-    ContextModal, Disableable, Icon, Sizable,
+    ContextModal, Disableable, Icon, Sizable, StyledExt,
 };
 use url::Url;
 use utils::LogErr;
@@ -61,7 +61,13 @@ impl Download {
                         .placeholder("地址")
                         .appearance(false)
                         .small()
-                        .prefix(|_cx| div().pl_2().child(Icon::new(IconName::Globe).small()));
+                        .prefix(|cx| {
+                            let theme = cx.theme();
+
+                            div()
+                                .pl_2()
+                                .child(Icon::new(IconName::Globe).text_color(theme.primary).small())
+                        });
                     if let Some(host) = host {
                         input.set_text(host, cx);
                     }
@@ -73,7 +79,12 @@ impl Download {
                         .placeholder("用户名")
                         .appearance(false)
                         .small()
-                        .prefix(|_cx| div().pl_2().child(Icon::new(IconName::User).small()));
+                        .prefix(|cx| {
+                            let theme = cx.theme();
+                            div()
+                                .pl_2()
+                                .child(Icon::new(IconName::User).text_color(theme.primary).small())
+                        });
                     if let Some(username) = username {
                         input.set_text(username, cx);
                     }
@@ -85,7 +96,12 @@ impl Download {
                         .placeholder("密码")
                         .appearance(false)
                         .small()
-                        .prefix(|_cx| div().pl_2().child(Icon::new(IconName::Lock).small()));
+                        .prefix(|cx| {
+                            let theme = cx.theme();
+                            div()
+                                .pl_2()
+                                .child(Icon::new(IconName::Lock).text_color(theme.primary).small())
+                        });
                     input.set_masked(true, cx);
                     if let Some(password) = password {
                         input.set_text(password, cx);
@@ -262,10 +278,10 @@ impl Download {
             .rounded_lg()
             .shadow_sm()
             .bg(theme.secondary)
-            .p_2()
+            .p_4()
             .child(
                 div()
-                    .w(px(200.0))
+                    .w_72()
                     .rounded_md()
                     .border_1()
                     .border_color(theme.border)
@@ -273,8 +289,8 @@ impl Download {
             )
             .child(
                 div()
-                    .mt_2()
-                    .w(px(200.0))
+                    .mt_4()
+                    .w_72()
                     .rounded_md()
                     .border_1()
                     .border_color(theme.border)
@@ -282,20 +298,24 @@ impl Download {
             )
             .child(
                 div()
-                    .mt_2()
-                    .w(px(200.0))
+                    .mt_4()
+                    .w_72()
                     .rounded_md()
                     .border_1()
                     .border_color(theme.border)
                     .child(self.password.clone()),
             )
             .child(
-                Button::new("login")
-                    .label("登录")
-                    .mt_2()
-                    .disabled(self.is_login)
-                    .loading(self.is_login)
-                    .on_click(cx.listener(Self::handle_login)),
+                div().flex().justify_center().mt_4().child(
+                    Button::new("login")
+                        .label("登录")
+                        .w_32()
+                        .font_bold()
+                        .text_color(theme.primary)
+                        .disabled(self.is_login)
+                        .loading(self.is_login)
+                        .on_click(cx.listener(Self::handle_login)),
+                ),
             )
     }
 
@@ -451,16 +471,65 @@ impl Download {
             .flex()
             .py_2()
             .bg(theme.secondary)
+            .font_bold()
             .child(Label::new("").text_center().w_8())
-            .child(Label::new("名称").pr_1().w(width))
-            .child(Label::new("状态").pl_1().pr_1().w_24())
-            .child(Label::new("操作").pl_1().pr_1().w_24())
-            .child(Label::new("进度").pl_1().pr_1().w_20())
-            .child(Label::new("大小").pl_1().pr_1().w_24())
-            .child(Label::new("下载").pl_1().pr_1().w(px(105.0)))
-            .child(Label::new("上传").pl_1().pr_1().w(px(105.0)))
-            .child(Label::new("比率").pl_1().pr_1().w_16())
-            .child(Label::new("添加日期").pl_1().pr_1().w(px(165.0)))
+            .child(Label::new("名称").text_color(theme.primary).pr_1().w(width))
+            .child(
+                Label::new("状态")
+                    .text_color(theme.primary)
+                    .pl_1()
+                    .pr_1()
+                    .w_24(),
+            )
+            .child(
+                Label::new("操作")
+                    .text_color(theme.primary)
+                    .pl_1()
+                    .pr_1()
+                    .w_24(),
+            )
+            .child(
+                Label::new("进度")
+                    .text_color(theme.primary)
+                    .pl_1()
+                    .pr_1()
+                    .w_20(),
+            )
+            .child(
+                Label::new("大小")
+                    .text_color(theme.primary)
+                    .pl_1()
+                    .pr_1()
+                    .w_24(),
+            )
+            .child(
+                Label::new("下载")
+                    .text_color(theme.primary)
+                    .pl_1()
+                    .pr_1()
+                    .w(px(105.0)),
+            )
+            .child(
+                Label::new("上传")
+                    .text_color(theme.primary)
+                    .pl_1()
+                    .pr_1()
+                    .w(px(105.0)),
+            )
+            .child(
+                Label::new("比率")
+                    .text_color(theme.primary)
+                    .pl_1()
+                    .pr_1()
+                    .w_16(),
+            )
+            .child(
+                Label::new("添加日期")
+                    .text_color(theme.primary)
+                    .pl_1()
+                    .pr_1()
+                    .w(px(165.0)),
+            )
     }
 
     fn render_list_item(
@@ -484,7 +553,7 @@ impl Download {
                 div()
                     .flex()
                     .justify_center()
-                    .child(Icon::new(magnet.icon()).small())
+                    .child(Icon::new(magnet.icon()).text_color(theme.primary))
                     .w_8(),
             )
             .child(Label::new(magnet.name.clone()).pr_1().w(width))
@@ -496,7 +565,7 @@ impl Download {
                     .gap_1()
                     .child(
                         Button::new(("pause", ix))
-                            .icon(IconName::CirclePause)
+                            .icon(Icon::new(IconName::CirclePause).text_color(theme.primary))
                             .small()
                             .tooltip("暂停")
                             .on_click(cx.listener({
@@ -508,7 +577,7 @@ impl Download {
                     )
                     .child(
                         Button::new(("resume", ix))
-                            .icon(IconName::FastForward)
+                            .icon(Icon::new(IconName::FastForward).text_color(theme.primary))
                             .small()
                             .tooltip("开始")
                             .on_click(cx.listener({
@@ -520,7 +589,7 @@ impl Download {
                     )
                     .child(
                         Button::new(("delete", ix))
-                            .icon(IconName::Trash2)
+                            .icon(Icon::new(IconName::Trash2).text_color(ui::red_400()))
                             .small()
                             .tooltip("删除")
                             .on_click(cx.listener({
