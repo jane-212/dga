@@ -8,7 +8,7 @@ use icons::IconName;
 use magnet::{Bound, FoundPreview};
 use ui::{
     button::Button, indicator::Indicator, label::Label, notification::Notification,
-    prelude::FluentBuilder, theme::ActiveTheme, ContextModal, Sizable, StyledExt,
+    prelude::FluentBuilder, theme::ActiveTheme, ContextModal, Icon, Sizable, StyledExt,
 };
 use utils::LogErr;
 
@@ -87,11 +87,14 @@ impl Preview {
                                 .gap_2()
                                 .child(
                                     Button::new(("add-to-download", ix))
-                                        .icon(if added {
-                                            IconName::Check
-                                        } else {
-                                            IconName::Plus
-                                        })
+                                        .icon(
+                                            Icon::new(if added {
+                                                IconName::Check
+                                            } else {
+                                                IconName::Plus
+                                            })
+                                            .text_color(theme.primary),
+                                        )
                                         .small()
                                         .on_click(cx.listener(move |this, _event, cx| {
                                             this.added(ix, cx);
@@ -99,11 +102,14 @@ impl Preview {
                                 )
                                 .child(
                                     Button::new(("copy", ix))
-                                        .icon(if copied {
-                                            IconName::Check
-                                        } else {
-                                            IconName::Copy
-                                        })
+                                        .icon(
+                                            Icon::new(if copied {
+                                                IconName::Check
+                                            } else {
+                                                IconName::Copy
+                                            })
+                                            .text_color(theme.primary),
+                                        )
                                         .small()
                                         .on_click(cx.listener(move |this, _event, cx| {
                                             this.copy(ix, cx);
