@@ -348,8 +348,7 @@ impl Download {
             let list = client
                 .get_torrent_list(
                     GetTorrentListArg::builder()
-                        .sort("dlspeed".to_string())
-                        .reverse(true)
+                        .sort("progress".to_string())
                         .build(),
                 )
                 .await?;
