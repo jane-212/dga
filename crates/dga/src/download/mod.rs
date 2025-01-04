@@ -66,6 +66,7 @@ impl Download {
 
                             div()
                                 .pl_2()
+                                .pr_1()
                                 .child(Icon::new(IconName::Globe).text_color(theme.primary).small())
                         });
                     if let Some(host) = host {
@@ -83,6 +84,7 @@ impl Download {
                             let theme = cx.theme();
                             div()
                                 .pl_2()
+                                .pr_1()
                                 .child(Icon::new(IconName::User).text_color(theme.primary).small())
                         });
                     if let Some(username) = username {
@@ -100,6 +102,7 @@ impl Download {
                             let theme = cx.theme();
                             div()
                                 .pl_2()
+                                .pr_1()
                                 .child(Icon::new(IconName::Lock).text_color(theme.primary).small())
                         });
                     input.set_masked(true, cx);
@@ -164,6 +167,10 @@ impl Download {
 
     pub fn total_upload_speed(&self) -> SharedString {
         self.total_speed.1.clone()
+    }
+
+    pub fn magnet_count(&self) -> usize {
+        self.magnets.len()
     }
 
     fn handle_event(this: View<Self>, event: &DownloadEvent, cx: &mut WindowContext) {
@@ -281,7 +288,7 @@ impl Download {
             .p_4()
             .child(
                 div()
-                    .w_72()
+                    .w_64()
                     .rounded_md()
                     .border_1()
                     .border_color(theme.border)
@@ -290,7 +297,7 @@ impl Download {
             .child(
                 div()
                     .mt_4()
-                    .w_72()
+                    .w_64()
                     .rounded_md()
                     .border_1()
                     .border_color(theme.border)
@@ -299,7 +306,7 @@ impl Download {
             .child(
                 div()
                     .mt_4()
-                    .w_72()
+                    .w_64()
                     .rounded_md()
                     .border_1()
                     .border_color(theme.border)
@@ -309,9 +316,8 @@ impl Download {
                 div().flex().justify_center().mt_4().child(
                     Button::new("login")
                         .label("登录")
-                        .w_32()
+                        .w_24()
                         .font_bold()
-                        .text_color(theme.primary)
                         .disabled(self.is_login)
                         .loading(self.is_login)
                         .on_click(cx.listener(Self::handle_login)),
@@ -328,15 +334,15 @@ impl Download {
         self.login(cx);
     }
 
-    async fn login_task(client: Arc<Qbit>) -> Result<String> {
-        let version = utils::handle_tokio_spawn(|| async move {
+    async fn login_task(client: Arc<Qbit>) -> Result<()> {
+        utils::handle_tokio_spawn(|| async move {
             let version = client.get_version().await?;
 
             Ok(version)
         })
         .await?;
 
-        Ok(version)
+        Ok(())
     }
 
     async fn get_and_update(
@@ -431,7 +437,7 @@ impl Download {
 
         cx.spawn(|this, mut async_cx| async move {
             match task.await {
-                Ok(v) => {
+                Ok(_) => {
                     let client_weak = Arc::downgrade(&client);
                     let res = async_cx.update(|cx| {
                         this.update(cx, |this, cx| {
@@ -440,9 +446,6 @@ impl Download {
                             cx.notify();
                         })
                         .log_err();
-                        cx.push_notification(
-                            Notification::new(format!("Qbittorrent版本: {v}")).icon(IconName::Info),
-                        )
                     });
                     Self::start_update(this, client_weak, async_cx);
 

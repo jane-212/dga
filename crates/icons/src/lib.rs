@@ -35,6 +35,7 @@ pub enum IconName {
     ClipboardPlus,
     Plus,
     Trash2,
+    Magnet,
 }
 
 impl IconNamed for IconName {
@@ -73,6 +74,7 @@ impl IconNamed for IconName {
             IconName::ClipboardPlus => "icons/clipboard-plus.svg",
             IconName::Plus => "icons/plus.svg",
             IconName::Trash2 => "icons/trash-2.svg",
+            IconName::Magnet => "icons/magnet.svg",
         }
         .into()
     }
