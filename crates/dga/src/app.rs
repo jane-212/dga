@@ -350,6 +350,23 @@ impl App {
         }
     }
 
+    fn end_display_item(
+        theme: &Theme,
+        icon: IconName,
+        text: impl Into<SharedString>,
+    ) -> impl IntoElement {
+        div()
+            .flex()
+            .items_center()
+            .text_sm()
+            .bg(theme.secondary_foreground.opacity(0.15))
+            .rounded_md()
+            .px_2()
+            .gap_1()
+            .child(Icon::new(icon).text_color(theme.primary).small())
+            .child(text.into())
+    }
+
     fn render_title_end(&self, cx: &mut ViewContext<Self>) -> impl IntoElement {
         let theme = cx.theme();
 
@@ -363,32 +380,23 @@ impl App {
             .when(
                 matches!(self.state, AppState::Download) && self.download.read(cx).has_login(),
                 |this| {
-                    this.child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .text_sm()
-                            .gap_1()
-                            .child(
-                                Icon::new(IconName::Download)
-                                    .text_color(theme.primary)
-                                    .small(),
-                            )
-                            .child(self.download.read(cx).total_download_speed()),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .text_sm()
-                            .gap_1()
-                            .child(
-                                Icon::new(IconName::Upload)
-                                    .text_color(theme.primary)
-                                    .small(),
-                            )
-                            .child(self.download.read(cx).total_upload_speed()),
-                    )
+                    let magnet_count = self.download.read(cx).magnet_count();
+
+                    this.child(Self::end_display_item(
+                        theme,
+                        IconName::Magnet,
+                        format!("{}", magnet_count),
+                    ))
+                    .child(Self::end_display_item(
+                        theme,
+                        IconName::Download,
+                        self.download.read(cx).total_download_speed(),
+                    ))
+                    .child(Self::end_display_item(
+                        theme,
+                        IconName::Upload,
+                        self.download.read(cx).total_upload_speed(),
+                    ))
                 },
             )
             .child(
