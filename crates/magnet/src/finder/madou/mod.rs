@@ -63,11 +63,14 @@ impl Madou {
 
     fn parse_date(date: String) -> Date {
         let now = Local::now();
-        let (month, day) = date.split_once('-').unzip();
-        let month = month
-            .and_then(|month| month.parse().ok())
-            .unwrap_or(now.month());
-        let day = day.and_then(|day| day.parse().ok()).unwrap_or(now.day());
+        let (month, day) = if let Some((month_str, day_str)) = date.split_once('-') {
+            (
+                month_str.parse().unwrap_or(now.month()),
+                day_str.parse().unwrap_or(now.day()),
+            )
+        } else {
+            (now.month(), now.day())
+        };
 
         Date::from_ymd(now.year() - 1, month, day)
     }
