@@ -20,7 +20,7 @@ chrono.workspace = true
 
 [package.metadata.bundle]
 name = "Dga"
-version = "0.1.4"
+version = "0.1.5"
 identifier = "github.jane-212.dga"
 icon = ["icon/icon.png"]
 copyright = "Copyright (c) jane 2024. All rights reserved."
