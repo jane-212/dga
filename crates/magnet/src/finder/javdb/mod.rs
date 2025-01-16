@@ -49,10 +49,10 @@ impl Javdb {
 
         const PAD: f64 = 1024.0;
         let size = match signal.to_uppercase().as_str() {
-            "GB" => number.map(|number| (number * PAD.powi(3)) as u32),
-            "MB" => number.map(|number| (number * PAD.powi(2)) as u32),
-            "KB" => number.map(|number| (number * PAD.powi(1)) as u32),
-            "B" => number.map(|number| number as u32),
+            "GB" => number.map(|number| (number * PAD.powi(3)) as u64),
+            "MB" => number.map(|number| (number * PAD.powi(2)) as u64),
+            "KB" => number.map(|number| (number * PAD.powi(1)) as u64),
+            "B" => number.map(|number| number as u64),
             _ => None,
         }
         .unwrap_or(0);
@@ -102,8 +102,13 @@ impl Finder for Javdb {
                 .unwrap_or_default();
 
             let date = Date::parse_date(date.trim(), "%Y-%m-%d");
-            let new_item = Box::new(Item::new(title, id, date, url));
-            items.push(new_item);
+            let new_item = Item::builder()
+                .title(title)
+                .id(id)
+                .date(date)
+                .preview(url)
+                .build();
+            items.push(Box::new(new_item));
         }
 
         Ok(items)
@@ -187,7 +192,7 @@ mod tests {
     async fn preview() {
         let finder = new_finder();
         let preview = finder
-            .load_preview("https://javdb.com/v/qDYQzM".into())
+            .load_preview(format!("{}/v/qDYQzM", Javdb::BASE_URL).into())
             .await
             .unwrap();
         assert!(!preview.title().is_empty());

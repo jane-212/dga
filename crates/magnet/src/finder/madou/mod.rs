@@ -4,6 +4,8 @@ mod selectors;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use base64::{engine::general_purpose::STANDARD, Engine};
+use chrono::{Datelike, Local};
 use gpui::SharedString;
 use item::{Data, Item, Preview};
 use reqwest::Client;
@@ -13,14 +15,14 @@ use selectors::{HomeSelectors, PreviewSelectors};
 use super::{Finder, FoundItem, FoundPreview, Result};
 use crate::{Date, Size};
 
-pub struct U3C3 {
+pub struct Madou {
     client: Client,
     home_selectors: HomeSelectors,
     preview_selectors: PreviewSelectors,
 }
 
-impl U3C3 {
-    const BASE_URL: &'static str = "https://u3c3.com";
+impl Madou {
+    const BASE_URL: &'static str = "https://hxx.533923.xyz";
 
     pub fn new(client: Client) -> Result<Self> {
         Ok(Self {
@@ -40,7 +42,7 @@ impl U3C3 {
         let signal: String = size
             .chars()
             .rev()
-            .take_while(|c| !c.is_ascii_digit() && *c != '.')
+            .take_while(|c| !c.is_ascii_digit() && *c != '.' && !c.is_whitespace())
             .collect::<String>()
             .chars()
             .rev()
@@ -60,38 +62,62 @@ impl U3C3 {
     }
 
     fn parse_date(date: String) -> Date {
-        Date::parse_date_time(date, "%Y-%m-%d %H:%M:%S")
+        let now = Local::now();
+        let (month, day) = if let Some((month_str, day_str)) = date.split_once('-') {
+            (
+                month_str.parse().unwrap_or(now.month()),
+                day_str.parse().unwrap_or(now.day()),
+            )
+        } else {
+            (now.month(), now.day())
+        };
+
+        Date::from_ymd(now.year() - 1, month, day)
+    }
+
+    fn base64_decode(origin: String) -> String {
+        STANDARD
+            .decode(origin)
+            .ok()
+            .and_then(|data| String::from_utf8(data).ok())
+            .unwrap_or_default()
     }
 }
 
 #[async_trait]
-impl Finder for U3C3 {
+impl Finder for Madou {
     async fn find(&self, key: SharedString) -> Result<Vec<Box<dyn FoundItem>>> {
-        let url = Self::BASE_URL;
-        let search2 = "eelja3lfe1a1".into();
+        let url = format!("{}/search.php", Self::BASE_URL);
         let plain_text = self
             .client
-            .get(url)
-            .query(&[("search", key), ("search2", search2)])
+            .post(url)
+            .form(&[("keyword", &key)])
             .send()
             .await?
             .text()
             .await?;
         let html = Html::parse_document(&plain_text);
 
-        let mut items: Vec<Box<dyn FoundItem>> = Vec::new();
-        for item in html.select(&self.home_selectors.item).skip(2) {
-            let title = item
+        let mut items = Vec::new();
+        for item in html.select(&self.home_selectors.item) {
+            let title: String = item
                 .select(&self.home_selectors.title)
                 .next()
-                .and_then(|title| title.attr("title").map(String::from))
+                .map(|title| title.text().collect())
+                .and_then(|title: String| {
+                    title
+                        .split('\'')
+                        .nth(1)
+                        .map(|undecoded| undecoded.to_string())
+                })
+                .map(Self::base64_decode)
                 .unwrap_or_default();
 
             let preview = item
-                .select(&self.home_selectors.title)
+                .select(&self.home_selectors.preview)
                 .next()
-                .and_then(|title| {
-                    title
+                .and_then(|preview| {
+                    preview
                         .attr("href")
                         .map(|href| format!("{}{}", Self::BASE_URL, href))
                 })
@@ -115,7 +141,7 @@ impl Finder for U3C3 {
                 .date(Self::parse_date(date))
                 .preview(preview)
                 .build();
-            items.push(Box::new(new_item));
+            items.push(Box::new(new_item) as Box<dyn FoundItem>);
         }
 
         Ok(items)
@@ -134,7 +160,13 @@ impl Finder for U3C3 {
             .select(&self.preview_selectors.title)
             .next()
             .map(|this| this.text().collect())
-            .map(|this: String| this.trim().to_string())
+            .and_then(|title: String| {
+                title
+                    .split('\'')
+                    .nth(1)
+                    .map(|undecoded| undecoded.to_string())
+            })
+            .map(Self::base64_decode)
             .unwrap_or_default();
         let size: String = html
             .select(&self.preview_selectors.size)
@@ -149,24 +181,16 @@ impl Finder for U3C3 {
         let magnet = html
             .select(&self.preview_selectors.magnet)
             .next()
-            .and_then(|this| {
-                this.attr("href")
-                    .and_then(|this| this.find('&').map(|end| this[..end].to_string()))
-            })
+            .and_then(|this| this.attr("href").map(|href| href.to_string()))
             .unwrap_or_default();
         let images: Vec<SharedString> = html
             .select(&self.preview_selectors.images)
-            .next()
-            .and_then(|this| {
-                this.attr("src")
-                    .map(|this| format!("{}{}", Self::BASE_URL, this))
-            })
-            .iter()
-            .map(|item| item.into())
+            .flat_map(|this| this.attr("src"))
+            .map(|item| item.to_string().into())
             .collect();
 
         let size = Self::parse_size(size);
-        let date = Self::parse_date(date);
+        let date = Date::parse_date(date.trim(), "%Y-%m-%d");
         let data = Data::new(size, date, magnet);
         let preview = Preview::new(title, vec![Arc::new(data)], images);
 
@@ -178,8 +202,8 @@ impl Finder for U3C3 {
 mod tests {
     use super::*;
 
-    fn new_finder() -> U3C3 {
-        U3C3::new(Client::new()).unwrap()
+    fn new_finder() -> Madou {
+        Madou::new(Client::new()).unwrap()
     }
 
     #[tokio::test]
@@ -193,13 +217,7 @@ mod tests {
     async fn preview() {
         let finder = new_finder();
         let preview = finder
-            .load_preview(
-                format!(
-                    "{}/view?id=73f25941f75cb6f8eebe727ae78a2c0c5dfcdb1a",
-                    U3C3::BASE_URL
-                )
-                .into(),
-            )
+            .load_preview(format!("{}/movie.php?id=11343687", Madou::BASE_URL).into())
             .await
             .unwrap();
         assert!(!preview.title().is_empty());

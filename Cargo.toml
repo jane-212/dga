@@ -33,6 +33,9 @@ chrono = "0.4.39"
 qbit-rs = "0.4.6"
 url = "2.5.4"
 whoami = "1.5.2"
+bon = "3.3.2"
+fuzzy-matcher = "0.3.7"
+base64 = "0.22.1"
 
 [profile.release]
 debug = "limited"
