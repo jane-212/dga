@@ -12,6 +12,9 @@ async-trait.workspace = true
 gpui.workspace = true
 scraper.workspace = true
 chrono.workspace = true
+bon.workspace = true
+fuzzy-matcher.workspace = true
+base64.workspace = true
 
 [dev-dependencies]
 tokio.workspace = true

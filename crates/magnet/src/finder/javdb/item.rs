@@ -1,6 +1,7 @@
 use std::any::TypeId;
 use std::sync::Arc;
 
+use bon::bon;
 use gpui::SharedString;
 
 use super::Javdb;
@@ -10,10 +11,12 @@ pub struct Item {
     title: SharedString,
     id: SharedString,
     date: Date,
-    preview: Url,
+    preview: Arc<Url>,
 }
 
+#[bon]
 impl Item {
+    #[builder]
     pub fn new(
         title: impl Into<SharedString>,
         id: impl Into<SharedString>,
@@ -24,14 +27,14 @@ impl Item {
             title: title.into(),
             id: id.into(),
             date,
-            preview: Url(preview.into()),
+            preview: Arc::new(Url(preview.into())),
         }
     }
 }
 
 impl FoundItem for Item {
     fn url(&self) -> Arc<dyn Previewable> {
-        Arc::new(self.preview.clone())
+        self.preview.clone()
     }
 
     fn title(&self) -> SharedString {
@@ -45,13 +48,8 @@ impl FoundItem for Item {
     fn last(&self) -> SharedString {
         self.date.format.clone()
     }
-
-    fn date(&self) -> &Date {
-        &self.date
-    }
 }
 
-#[derive(Clone)]
 pub struct Url(SharedString);
 
 impl Previewable for Url {

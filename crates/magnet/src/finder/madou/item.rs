@@ -4,7 +4,7 @@ use std::sync::Arc;
 use bon::bon;
 use gpui::SharedString;
 
-use super::U3C3;
+use super::Madou;
 use crate::{Bound, Date, FoundItem, FoundPreview, Previewable, Size};
 
 pub struct Item {
@@ -54,7 +54,7 @@ pub struct Url(SharedString);
 
 impl Previewable for Url {
     fn preview_url(&self) -> (TypeId, SharedString) {
-        (TypeId::of::<U3C3>(), self.0.clone())
+        (TypeId::of::<Madou>(), self.0.clone())
     }
 }
 

@@ -8,11 +8,13 @@ use std::time::Duration;
 use chrono::{DateTime, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
 use error::{Error, Result};
 use finder::Finder;
+use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use gpui::SharedString;
 use reqwest::Client;
 use runtime::RUNTIME;
 
 pub struct Magnet {
+    matcher: SkimMatcherV2,
     finders: HashMap<TypeId, Arc<dyn Finder>>,
 }
 
@@ -20,8 +22,9 @@ impl Magnet {
     pub fn new() -> Result<Self> {
         let client = Self::default_http_client()?;
         let finders = finder::all_finders(client)?;
+        let matcher = SkimMatcherV2::default().smart_case();
 
-        Ok(Self { finders })
+        Ok(Self { matcher, finders })
     }
 
     fn default_http_client() -> Result<Client> {
@@ -36,25 +39,26 @@ impl Magnet {
 
     pub async fn find(&self, key: SharedString) -> Result<Vec<Box<dyn FoundItem>>> {
         let finders = self.finders.values().cloned().collect::<Vec<_>>();
-        RUNTIME
-            .spawn(async move {
-                let mut tasks = Vec::new();
-                for finder in finders {
-                    let key = key.clone();
-                    let task = async move { finder.find(key).await };
-                    tasks.push(task);
-                }
+        let mut tasks = Vec::new();
+        for finder in finders {
+            let key = key.clone();
+            let task = RUNTIME.spawn(async move { finder.find(key).await });
+            tasks.push(task);
+        }
 
-                let mut items = Vec::new();
-                for task in tasks {
-                    let new_items = task.await?;
-                    items.extend(new_items);
-                }
+        let mut items = Vec::new();
+        for task in tasks {
+            let new_items = task.await??;
+            items.extend(new_items);
+        }
 
-                items.sort_by(|a, b| b.date().cmp(a.date()));
-                Ok(items)
-            })
-            .await?
+        items.sort_by_key(|item| {
+            self.matcher
+                .fuzzy_match(&item.title(), &key)
+                .unwrap_or_default()
+        });
+        items.reverse();
+        Ok(items)
     }
 
     pub async fn preview(&self, url: Arc<dyn Previewable>) -> Result<Box<dyn FoundPreview>> {
@@ -73,7 +77,6 @@ impl Magnet {
 
 pub trait FoundItem: Send + Sync {
     fn title(&self) -> SharedString;
-    fn date(&self) -> &Date;
     fn url(&self) -> Arc<dyn Previewable>;
     fn first(&self) -> SharedString;
     fn last(&self) -> SharedString;
@@ -97,7 +100,7 @@ pub trait Bound: Send + Sync {
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub struct Size {
-    size: u32,
+    size: u64,
     format: SharedString,
 }
 
@@ -108,14 +111,14 @@ impl From<&Size> for SharedString {
 }
 
 impl Size {
-    pub fn new(size: u32) -> Self {
+    pub fn new(size: u64) -> Self {
         Self {
             size,
             format: Self::to_format(size),
         }
     }
 
-    fn to_format(size: u32) -> SharedString {
+    fn to_format(size: u64) -> SharedString {
         let mut count = 0;
         let mut size = size as f64;
         while size >= 1024.0 {
@@ -154,6 +157,15 @@ impl Date {
             date_time,
             format: Self::to_format(date_time),
         }
+    }
+
+    fn from_ymd(year: i32, month: u32, day: u32) -> Self {
+        let date = NaiveDate::from_ymd_opt(year, month, day)
+            .map(|date| date.and_time(NaiveTime::MIN))
+            .map(Self::convert_date_time_to_local)
+            .unwrap_or_default();
+
+        Self::new(date)
     }
 
     fn parse_date(date: impl AsRef<str>, format: impl AsRef<str>) -> Self {

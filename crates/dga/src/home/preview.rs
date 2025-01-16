@@ -135,12 +135,7 @@ impl Preview {
                 .into_any_element(),
             ListItem::Image(url) => div()
                 .pt_2()
-                .child(
-                    img(url.clone())
-                        .border_1()
-                        .border_color(theme.border)
-                        .rounded_md(),
-                )
+                .child(img(url.clone()).rounded_md())
                 .into_any_element(),
         }
     }

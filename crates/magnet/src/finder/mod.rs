@@ -1,4 +1,5 @@
 mod javdb;
+mod madou;
 mod u3c3;
 
 use std::{any::TypeId, collections::HashMap, sync::Arc};
@@ -6,6 +7,7 @@ use std::{any::TypeId, collections::HashMap, sync::Arc};
 use async_trait::async_trait;
 use gpui::SharedString;
 use javdb::Javdb;
+use madou::Madou;
 use reqwest::Client;
 use u3c3::U3C3;
 
@@ -26,6 +28,9 @@ pub fn all_finders(client: Client) -> Result<HashMap<TypeId, Arc<dyn Finder>>> {
 
     let javdb = Javdb::new(client.clone())?;
     finders.insert(TypeId::of::<Javdb>(), Arc::new(javdb));
+
+    let madou = Madou::new(client.clone())?;
+    finders.insert(TypeId::of::<Madou>(), Arc::new(madou));
 
     Ok(finders)
 }
